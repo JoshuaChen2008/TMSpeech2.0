@@ -104,6 +104,12 @@ public static class RecognizerConfigTypes
 
     public const string Recognizer = "recognizer.source";
 
+    /// <summary>命名引擎实例（Engine Profile）列表，存为 JSON 字符串。</summary>
+    public const string Profiles = "recognizer.profiles";
+
+    /// <summary>当前选中的引擎实例名称。</summary>
+    public const string ActiveProfile = "recognizer.activeProfile";
+
     public static string GetPluginConfigKey(string pluginId)
     {
         return $"plugin.{pluginId}.config";

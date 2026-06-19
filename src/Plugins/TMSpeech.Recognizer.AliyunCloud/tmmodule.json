@@ -1,0 +1,11 @@
+{
+  "id": "TMSpeech.Recognizer.AliyunCloud",
+  "version": 1,
+  "desc": "接入阿里云智能语音交互（NLS）实时语音识别 API",
+  "displayVersion": "1.0.0",
+  "name": "语音识别阿里云",
+  "apiLevel": 1,
+  "assemblies": [
+    "TMSpeech.Recognizer.AliyunCloud.dll"
+  ]
+}

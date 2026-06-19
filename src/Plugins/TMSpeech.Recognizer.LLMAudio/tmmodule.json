@@ -1,0 +1,11 @@
+{
+  "id": "TMSpeech.Recognizer.LLMAudio",
+  "version": 1,
+  "desc": "用多模态音频大模型（LLM）进行语音识别（仅识别，不翻译）",
+  "displayVersion": "1.0.0",
+  "name": "语音识别大模型",
+  "apiLevel": 1,
+  "assemblies": [
+    "TMSpeech.Recognizer.LLMAudio.dll"
+  ]
+}
