@@ -14,27 +14,23 @@ public class LLMAudioConfigEditor : IPluginConfigEditor
     public LLMAudioConfigEditor()
     {
         var def = new LLMAudioConfig();
-        _values["baseUrl"] = def.BaseUrl;
         _values["apiKey"] = def.ApiKey;
         _values["model"] = def.Model;
-        _values["language"] = def.Language;
-        _values["prompt"] = def.Prompt;
-        _values["maxSegmentMs"] = def.MaxSegmentMs;
-        _values["silenceMs"] = def.SilenceMs;
+        _values["region"] = def.Region;
+        _values["maxSentenceSilence"] = def.MaxSentenceSilence;
 
-        _formItems.Add(new PluginConfigFormItemText("baseUrl", "API 地址",
-            Placeholder: "https://api.openai.com/v1"));
-        _formItems.Add(new PluginConfigFormItemPassword("apiKey", "API Key"));
+        _formItems.Add(new PluginConfigFormItemPassword("apiKey", "API Key",
+            Description: "百炼 API Key（sk-xxx），北京/新加坡地域的 Key 不同"));
         _formItems.Add(new PluginConfigFormItemText("model", "模型",
-            Placeholder: "gpt-4o-audio-preview / qwen-audio-turbo"));
-        _formItems.Add(new PluginConfigFormItemText("language", "识别语言",
-            Placeholder: "中文 / English / auto"));
-        _formItems.Add(new PluginConfigFormItemText("prompt", "提示词",
-            Description: "务必强调只输出原文、不要翻译"));
-        _formItems.Add(new PluginConfigFormItemNumber("maxSegmentMs", "最长断句(ms)",
-            Min: 1000, Max: 30000));
-        _formItems.Add(new PluginConfigFormItemNumber("silenceMs", "静音断句(ms)",
-            Min: 200, Max: 5000));
+            Placeholder: "fun-asr-realtime / paraformer-realtime-v2"));
+        _formItems.Add(new PluginConfigFormItemOption("region", "服务地域",
+            new Dictionary<object, string>
+            {
+                ["beijing"] = "华北2（北京）",
+                ["singapore"] = "新加坡"
+            }));
+        _formItems.Add(new PluginConfigFormItemNumber("maxSentenceSilence", "断句静音(ms，0=默认)",
+            Min: 0, Max: 6000));
     }
 
     public IReadOnlyList<PluginConfigFormItem> GetFormItems() => _formItems.AsReadOnly();
@@ -53,13 +49,10 @@ public class LLMAudioConfigEditor : IPluginConfigEditor
     {
         var config = new LLMAudioConfig
         {
-            BaseUrl = Str("baseUrl"),
             ApiKey = Str("apiKey"),
-            Model = Str("model"),
-            Language = Str("language"),
-            Prompt = Str("prompt"),
-            MaxSegmentMs = Int("maxSegmentMs", 8000),
-            SilenceMs = Int("silenceMs", 700)
+            Model = string.IsNullOrWhiteSpace(Str("model")) ? "fun-asr-realtime" : Str("model"),
+            Region = string.IsNullOrWhiteSpace(Str("region")) ? "beijing" : Str("region"),
+            MaxSentenceSilence = Int("maxSentenceSilence", 0)
         };
         return JsonSerializer.Serialize(config, new JsonSerializerOptions
         {
@@ -76,13 +69,10 @@ public class LLMAudioConfigEditor : IPluginConfigEditor
             var cfg = JsonSerializer.Deserialize<LLMAudioConfig>(config);
             if (cfg != null)
             {
-                _values["baseUrl"] = cfg.BaseUrl;
                 _values["apiKey"] = cfg.ApiKey;
-                _values["model"] = cfg.Model;
-                _values["language"] = cfg.Language;
-                _values["prompt"] = cfg.Prompt;
-                _values["maxSegmentMs"] = cfg.MaxSegmentMs;
-                _values["silenceMs"] = cfg.SilenceMs;
+                _values["model"] = string.IsNullOrWhiteSpace(cfg.Model) ? "fun-asr-realtime" : cfg.Model;
+                _values["region"] = string.IsNullOrWhiteSpace(cfg.Region) ? "beijing" : cfg.Region;
+                _values["maxSentenceSilence"] = cfg.MaxSentenceSilence;
             }
         }
         catch

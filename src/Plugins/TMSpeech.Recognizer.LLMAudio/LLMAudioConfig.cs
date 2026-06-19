@@ -3,28 +3,23 @@ using System.Text.Json.Serialization;
 namespace TMSpeech.Recognizer.LLMAudio;
 
 /// <summary>
-/// 语音识别大模型配置。使用 OpenAI 兼容的多模态（音频）聊天接口，仅做识别，不翻译。
+/// 阿里云百炼（DashScope）实时语音识别配置。
+/// 通过 WebSocket 流式协议接入 Fun-ASR / Paraformer 等实时识别模型，仅需一个 API Key。
 /// </summary>
 public class LLMAudioConfig
 {
-    /// <summary>OpenAI 兼容端点，例如 https://api.openai.com/v1 或 DashScope 兼容模式地址。</summary>
-    [JsonPropertyName("baseUrl")] public string BaseUrl { get; set; } = "https://api.openai.com/v1";
-
+    /// <summary>百炼 API Key（sk-xxx）。北京与新加坡地域的 Key 不同。</summary>
     [JsonPropertyName("apiKey")] public string ApiKey { get; set; } = "";
 
-    /// <summary>音频多模态模型名，例如 gpt-4o-audio-preview、qwen-audio-turbo。</summary>
-    [JsonPropertyName("model")] public string Model { get; set; } = "gpt-4o-audio-preview";
+    /// <summary>实时识别模型名，例如 fun-asr-realtime、paraformer-realtime-v2。</summary>
+    [JsonPropertyName("model")] public string Model { get; set; } = "fun-asr-realtime";
 
-    /// <summary>识别语言提示，例如 中文 / English / auto。</summary>
-    [JsonPropertyName("language")] public string Language { get; set; } = "中文";
+    /// <summary>服务地域：beijing（华北2·北京）/ singapore（新加坡）。决定 WebSocket 网关地址。</summary>
+    [JsonPropertyName("region")] public string Region { get; set; } = "beijing";
 
-    /// <summary>提示词。务必强调"只输出原文、不要翻译/解释"。</summary>
-    [JsonPropertyName("prompt")] public string Prompt { get; set; } =
-        "你是一个语音转写器。请逐字转写音频中的语音内容，只输出听到的原文，不要翻译、不要解释、不要添加任何额外文字。";
-
-    /// <summary>单段最长时长（毫秒），到时强制切段送识别。</summary>
-    [JsonPropertyName("maxSegmentMs")] public int MaxSegmentMs { get; set; } = 8000;
-
-    /// <summary>检测到多长的尾部静音就认为一句结束（毫秒）。</summary>
-    [JsonPropertyName("silenceMs")] public int SilenceMs { get; set; } = 700;
+    /// <summary>
+    /// VAD 断句静音阈值（毫秒，Fun-ASR/Paraformer 的 max_sentence_silence）。
+    /// 0 表示用服务端默认值。对话/聊天等需快速断句的场景可调小（如 400）。
+    /// </summary>
+    [JsonPropertyName("maxSentenceSilence")] public int MaxSentenceSilence { get; set; } = 0;
 }
