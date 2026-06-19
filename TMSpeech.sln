@@ -26,6 +26,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TMSpeech.Recognizer.AliyunC
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TMSpeech.Recognizer.LLMAudio", "src\Plugins\TMSpeech.Recognizer.LLMAudio\TMSpeech.Recognizer.LLMAudio.csproj", "{E2F3A4B5-2222-4333-8444-555566667777}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TMSpeech.Recognizer.StreamingAsr", "src\Plugins\TMSpeech.Recognizer.StreamingAsr\TMSpeech.Recognizer.StreamingAsr.csproj", "{F3A4B5C6-3333-4444-8555-666677778888}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -68,6 +70,10 @@ Global
 		{E2F3A4B5-2222-4333-8444-555566667777}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E2F3A4B5-2222-4333-8444-555566667777}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E2F3A4B5-2222-4333-8444-555566667777}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F3A4B5C6-3333-4444-8555-666677778888}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F3A4B5C6-3333-4444-8555-666677778888}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F3A4B5C6-3333-4444-8555-666677778888}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F3A4B5C6-3333-4444-8555-666677778888}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -79,6 +85,7 @@ Global
 		{2BC5E9A7-4D3C-4A1E-9B7F-8E6D5C4F3A2B} = {067D976B-853C-432D-B522-9DA758808BCD}
 		{D1E2F3A4-1111-4222-8333-444455556666} = {067D976B-853C-432D-B522-9DA758808BCD}
 		{E2F3A4B5-2222-4333-8444-555566667777} = {067D976B-853C-432D-B522-9DA758808BCD}
+		{F3A4B5C6-3333-4444-8555-666677778888} = {067D976B-853C-432D-B522-9DA758808BCD}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4F0F1C03-F420-4F93-919B-49FFB10ED58F}
