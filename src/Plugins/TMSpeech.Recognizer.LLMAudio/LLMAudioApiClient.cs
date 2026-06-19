@@ -23,7 +23,9 @@ public class LLMAudioApiClient : IDisposable
 
     public async Task<string> TranscribeAsync(byte[] wav, CancellationToken ct)
     {
-        var base64 = Convert.ToBase64String(wav);
+        // 部分服务商（如阿里云百炼/DashScope）要求 data 为带 MIME 前缀的 data URL，
+        // 而非裸 base64，故统一使用 data URL 形式。
+        var base64 = "data:audio/wav;base64," + Convert.ToBase64String(wav);
         var userText = string.IsNullOrWhiteSpace(_config.Language)
             ? "请转写这段音频的语音内容。"
             : $"请用{_config.Language}转写这段音频的语音内容。";
