@@ -56,7 +56,8 @@
           BorderBrush="{DynamicResource AppBorderBrush}"
           ClipToBounds="True">
     <Panel>
-      <ExperimentalAcrylicBorder IsHitTestVisible="False">
+      <ExperimentalAcrylicBorder IsHitTestVisible="False"
+                                 CornerRadius="{DynamicResource AppShellCornerRadius}">
         <ExperimentalAcrylicBorder.Material>
           <ExperimentalAcrylicMaterial BackgroundSource="Digger"
                                        TintColor="{DynamicResource AppGlassTintColor}"
@@ -93,13 +94,6 @@
               </StackPanel>
             </StackPanel>
           </Border>
-
-          <!-- 底部提示 -->
-          <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8"
-                      Margin="8,16,8,4">
-            <TextBlock Classes="NavIcon Muted" FontSize="14">&#xE771;</TextBlock>
-            <TextBlock Classes="Small Muted" VerticalAlignment="Center">界面跟随系统主题</TextBlock>
-          </StackPanel>
 
           <!-- 导航 -->
           <StackPanel Spacing="4">
@@ -317,10 +311,19 @@
               <ScrollViewer Classes="Pane"
                             IsVisible="{Binding CurrentTab, Converter={StaticResource IntEqualsConverter}, ConverterParameter=2}">
                 <StackPanel Spacing="20" DataContext="{Binding AppearanceSectionConfig}">
-                  <StackPanel Spacing="4" Margin="0,10,0,0">
-                    <TextBlock Classes="PageTitle" Text="显示与字幕" />
-                    <TextBlock Classes="Small Muted" Text="调整字幕的排版、颜色与视觉效果。" />
-                  </StackPanel>
+                  <Grid ColumnDefinitions="*,Auto" Margin="0,10,0,0">
+                    <StackPanel Spacing="4">
+                      <TextBlock Classes="PageTitle" Text="显示与字幕" />
+                      <TextBlock Classes="Small Muted" Text="调整字幕的排版、颜色与视觉效果。" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="Ghost" VerticalAlignment="Center"
+                            Command="{Binding ResetCommand}" ToolTip.Tip="将本页设置恢复为默认值">
+                      <StackPanel Orientation="Horizontal" Spacing="7">
+                        <TextBlock Classes="NavIcon" FontSize="13">&#xE777;</TextBlock>
+                        <TextBlock VerticalAlignment="Center">恢复默认</TextBlock>
+                      </StackPanel>
+                    </Button>
+                  </Grid>
 
                   <!-- 实时预览 -->
                   <StackPanel Spacing="8">
@@ -386,6 +389,10 @@
                             </ComboBox.ItemTemplate>
                           </ComboBox>
                         </StackPanel>
+                        <StackPanel Spacing="6">
+                          <TextBlock Text="阴影大小" />
+                          <NumericUpDown Value="{Binding ShadowSize}" Minimum="0" Maximum="64" Increment="1" />
+                        </StackPanel>
                       </StackPanel>
                     </StackPanel>
 
@@ -412,10 +419,6 @@
                         <StackPanel Spacing="6">
                           <TextBlock Text="阴影颜色" />
                           <ColorPicker Color="{Binding ShadowColor, Converter={StaticResource IntToColorConverter}}" />
-                        </StackPanel>
-                        <StackPanel Spacing="6">
-                          <TextBlock Text="阴影大小" />
-                          <NumericUpDown Value="{Binding ShadowSize}" Minimum="0" Maximum="64" Increment="1" />
                         </StackPanel>
                       </StackPanel>
                     </StackPanel>

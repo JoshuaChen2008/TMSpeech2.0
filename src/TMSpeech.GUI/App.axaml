@@ -3,8 +3,7 @@
              xmlns:controls="using:TMSpeech.GUI.Controls"
              x:Class="TMSpeech.GUI.App"
              x:Name="app"
-             RequestedThemeVariant="Default">
-  <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+             RequestedThemeVariant="Dark">
 
   <Application.Styles>
     <FluentTheme />

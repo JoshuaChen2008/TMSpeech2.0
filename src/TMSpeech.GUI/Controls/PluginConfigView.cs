@@ -18,10 +18,11 @@ public class PluginConfigView : UserControl
 
     public PluginConfigView()
     {
+        // 标签列 Auto：按最长标签自适应，避免“编码器参数文件”等长标签被截断
         _container = new AutoGrid()
         {
             RowCount = 100,
-            ColumnDefinitions = new ColumnDefinitions("100,*"),
+            ColumnDefinitions = new ColumnDefinitions("Auto,*"),
         };
         this.Content = _container;
     }
@@ -102,6 +103,8 @@ public class PluginConfigView : UserControl
             var label = new Label()
             {
                 Content = formItem.Name,
+                Margin = new Thickness(0, 5, 14, 5),
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
             };
             _container.Children.Add(label);
             Control control;
@@ -226,6 +229,7 @@ public class PluginConfigView : UserControl
                 };
             }
 
+            control.Margin = new Thickness(0, 5);
             _container.Children.Add(control);
         }
     }

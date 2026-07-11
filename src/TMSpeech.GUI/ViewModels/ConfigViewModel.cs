@@ -290,9 +290,20 @@ namespace TMSpeech.GUI.ViewModels
             new KeyValuePair<int, string>(AppearanceConfigTypes.TextAlignEnum.Justify, "两端对齐"),
         ];
 
+        /// <summary>恢复本节全部设置为默认值。</summary>
+        public ReactiveCommand<Unit, Unit> ResetCommand { get; }
+
         public AppearanceSectionConfigViewModel()
         {
             FontsAvailable = FontManager.Current.SystemFonts.ToList();
+            ResetCommand = ReactiveCommand.Create(() =>
+            {
+                var defaults = DefaultConfig.GenerateConfig()
+                    .Where(x => ConfigManager.IsInSection(x.Key, SectionName))
+                    .ToDictionary(x => x.Key, x => x.Value);
+                ConfigManagerFactory.Instance.BatchApply(defaults);
+                Load();
+            });
         }
     }
 
