@@ -308,6 +308,7 @@ namespace TMSpeech.GUI.ViewModels
 
         public IReadOnlyDictionary<string, Core.Plugins.IAudioSource> Refresh()
         {
+            try { App.PluginsLoadTask.Wait(TimeSpan.FromSeconds(15)); } catch { }
             var plugins = Core.Plugins.PluginManagerFactory.GetInstance().AudioSources;
             if (AudioSource == "" && plugins.Count >= 1)
                 AudioSource = plugins.First().Key;
@@ -411,6 +412,7 @@ namespace TMSpeech.GUI.ViewModels
 
         public IReadOnlyDictionary<string, Core.Plugins.IRecognizer> Refresh()
         {
+            try { App.PluginsLoadTask.Wait(TimeSpan.FromSeconds(15)); } catch { }
             var plugins = Core.Plugins.PluginManagerFactory.GetInstance().Recognizers;
             if (Recognizer == "" && plugins.Count >= 1)
                 Recognizer = plugins.First().Key;

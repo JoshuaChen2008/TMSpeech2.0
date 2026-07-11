@@ -174,7 +174,12 @@ public class MainViewModel : ViewModelBase
         });
 
         this.PlayCommand = ReactiveCommand.CreateFromTask(
-            async () => { await Task.Run(() => { _jobManager.Start(); }); },
+            async () =>
+            {
+                // 插件在后台加载，若用户在加载完成前点击启动则先等待
+                await App.PluginsLoadTask;
+                await Task.Run(() => { _jobManager.Start(); });
+            },
             this.WhenAnyValue(x => x.PlayButtonVisible));
         this.PauseCommand = ReactiveCommand.CreateFromTask(
             async () => { await Task.Run(() => { _jobManager.Pause(); }); },

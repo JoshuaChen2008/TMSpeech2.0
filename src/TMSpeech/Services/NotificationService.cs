@@ -4,6 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using DesktopNotifications.FreeDesktop;
 using DesktopNotifications.Windows;
 using System;
+using System.Threading.Tasks;
 using DesktopNotifications;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
@@ -20,7 +21,7 @@ public class NotificationService : INotificationService
         var _notification = Program.NotificationManager;
         if (_notification == null || type >= NotificationType.Error)
         {
-            // macos not supported 
+            // macos not supported
             Dispatcher.UIThread.Post(async () =>
             {
                 await MessageBoxManager.GetMessageBoxStandard(title, content).ShowAsync();
@@ -34,7 +35,20 @@ public class NotificationService : INotificationService
             Title = title,
             Body = content
         };
-        _notification.ShowNotification(nf);
+        _ = ShowWhenReadyAsync(_notification, nf);
+    }
+
+    private static async Task ShowWhenReadyAsync(INotificationManager manager, Notification nf)
+    {
+        try
+        {
+            await AppBuilderExtensions.NotificationInitTask.ConfigureAwait(false);
+            await manager.ShowNotification(nf).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"显示系统通知失败: {ex.Message}");
+        }
     }
 }
 
@@ -43,6 +57,12 @@ public class NotificationService : INotificationService
 /// </summary>
 public static class AppBuilderExtensions
 {
+    /// <summary>
+    /// 通知管理器的异步初始化任务。初始化改为后台进行，避免阻塞应用启动；
+    /// 发送通知前请先等待此任务完成。
+    /// </summary>
+    public static Task NotificationInitTask { get; private set; } = Task.CompletedTask;
+
     /// <summary>
     /// Setups the <see cref="INotificationManager" /> for the current platform and
     /// binds it to the service locator (<see cref="AvaloniaLocator" />).
@@ -68,8 +88,8 @@ public static class AppBuilderExtensions
             return builder;
         }
 
-        //TODO Any better way of doing this?
-        manager.Initialize().GetAwaiter().GetResult();
+        // 后台初始化，不阻塞启动（原先在此同步等待，拖慢窗口显示）
+        NotificationInitTask = manager.Initialize();
 
         var manager_ = manager;
         builder.AfterSetup(b =>

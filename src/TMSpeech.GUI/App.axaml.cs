@@ -32,7 +32,14 @@ public partial class App : Application
 
     private MainWindow _mainWindow;
     public MainWindow MainWindow => _mainWindow;
-    
+
+    /// <summary>
+    /// 插件后台加载任务。窗口先显示，插件在后台加载完成后才可开始识别；
+    /// 需要用到插件列表的地方应先等待此任务。
+    /// </summary>
+    public static Task PluginsLoadTask { get; private set; } = Task.CompletedTask;
+
+
     public void UpdateTrayMenu(bool locked = false)
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
@@ -84,43 +91,46 @@ public partial class App : Application
 
         if (!Design.IsDesignMode)
         {
-            try
+            // 插件改为后台加载：主窗口立即显示，不再被插件（含原生 DLL）加载阻塞
+            PluginsLoadTask = Task.Run(() => Core.Plugins.PluginManagerFactory.GetInstance().LoadPlugins());
+            PluginsLoadTask.ContinueWith(t =>
             {
-                Core.Plugins.PluginManagerFactory.GetInstance().LoadPlugins();
-            }
-            catch (Exception ex)
-            {
-                Dispatcher.UIThread.Post(async () =>
+                if (t.IsFaulted)
                 {
-                    await MessageBoxManager.GetMessageBoxStandard(
-                        "插件加载失败",
-                        $"无法加载插件，应用程序可能无法正常工作。\n\n错误详情：{ex.Message}",
-                        ButtonEnum.Ok,
-                        Icon.Error
-                    ).ShowAsync();
-                });
-            }
-
-            // Run recognizer if config is set.
-            try
-            {
-                if (ConfigManagerFactory.Instance.Get<bool>(GeneralConfigTypes.StartOnLaunch))
-                {
-                    Dispatcher.UIThread.Post(() => { _mainWindow.ViewModel.PlayCommand.Execute(); });
+                    var ex = t.Exception!.GetBaseException();
+                    Dispatcher.UIThread.Post(async () =>
+                    {
+                        await MessageBoxManager.GetMessageBoxStandard(
+                            "插件加载失败",
+                            $"无法加载插件，应用程序可能无法正常工作。\n\n错误详情：{ex.Message}",
+                            ButtonEnum.Ok,
+                            Icon.Error
+                        ).ShowAsync();
+                    });
+                    return;
                 }
-            }
-            catch (Exception ex)
-            {
-                Dispatcher.UIThread.Post(async () =>
+
+                // Run recognizer if config is set.
+                try
                 {
-                    await MessageBoxManager.GetMessageBoxStandard(
-                        "自动启动失败",
-                        $"无法自动启动识别器。\n\n错误详情：{ex.Message}",
-                        ButtonEnum.Ok,
-                        Icon.Warning
-                    ).ShowAsync();
-                });
-            }
+                    if (ConfigManagerFactory.Instance.Get<bool>(GeneralConfigTypes.StartOnLaunch))
+                    {
+                        Dispatcher.UIThread.Post(() => { _mainWindow.ViewModel.PlayCommand.Execute().Subscribe(); });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Dispatcher.UIThread.Post(async () =>
+                    {
+                        await MessageBoxManager.GetMessageBoxStandard(
+                            "自动启动失败",
+                            $"无法自动启动识别器。\n\n错误详情：{ex.Message}",
+                            ButtonEnum.Ok,
+                            Icon.Warning
+                        ).ShowAsync();
+                    });
+                }
+            });
         }
     }
 }
