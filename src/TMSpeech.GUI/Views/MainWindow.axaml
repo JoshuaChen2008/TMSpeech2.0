@@ -89,6 +89,9 @@
       <Button Click="SettingsButton_Click">
         <PathIcon Data="{StaticResource settings_regular}"></PathIcon>
       </Button>
+      <Button Command="{Binding ExitCommand}" Margin="16,0,0,0" ToolTip.Tip="退出 TMSpeech">
+        <PathIcon Data="{StaticResource dismiss_regular}"></PathIcon>
+      </Button>
     </StackPanel>
     <views:CaptionView Grid.Row="1" Margin="16"
                        FontWeight="Bold"
