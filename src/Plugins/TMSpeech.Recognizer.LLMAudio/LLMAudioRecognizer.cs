@@ -19,6 +19,8 @@ namespace TMSpeech.Recognizer.LLMAudio;
 /// </summary>
 public class LLMAudioRecognizer : IRecognizer
 {
+    internal delegate Task<SessionResult> SessionRunner(CancellationToken ct, Action onSessionStarted);
+
     public string GUID => "C8E4D3B2-4A1F-4B6C-8D9E-2F3A4B5C6D7E";
     public string Name => "语音识别Fun-ASR（阿里云）";
     public string Description => "接入阿里云百炼 DashScope 实时语音识别（Fun-ASR / Paraformer）";
@@ -46,6 +48,7 @@ public class LLMAudioRecognizer : IRecognizer
     private long _generation;
 
     private volatile bool _running;
+    private readonly SessionRunner? _sessionRunner;
 
     /// <summary>当前是否有活跃的 WebSocket 会话正在收音（false = 挂起等待声音）。</summary>
     private volatile bool _sessionActive;
@@ -63,6 +66,15 @@ public class LLMAudioRecognizer : IRecognizer
     private const int MaxQueuedChunks = 200;
     private const int MaxPreRollBytes = 48 * 1024; // 16kHz * 2B ≈ 1.5s
     private const int MaxConsecutiveFailures = 5;
+
+    public LLMAudioRecognizer()
+    {
+    }
+
+    internal LLMAudioRecognizer(SessionRunner sessionRunner)
+    {
+        _sessionRunner = sessionRunner;
+    }
 
     public IPluginConfigEditor CreateConfigEditor() => new LLMAudioConfigEditor();
 
@@ -201,8 +213,7 @@ public class LLMAudioRecognizer : IRecognizer
     /// </summary>
     private async Task WorkerLoopAsync(long gen, CancellationToken ct)
     {
-        var consecutiveFailures = 0;
-        var everStarted = false;
+        var retryState = new SessionRetryState();
 
         try
         {
@@ -219,7 +230,9 @@ public class LLMAudioRecognizer : IRecognizer
                 string? failMessage = null;
                 try
                 {
-                    result = await RunSessionAsync(ct);
+                    result = _sessionRunner == null
+                        ? await RunSessionAsync(ct, retryState.MarkSessionStarted)
+                        : await _sessionRunner(ct, retryState.MarkSessionStarted);
                 }
                 catch (OperationCanceledException)
                 {
@@ -238,17 +251,13 @@ public class LLMAudioRecognizer : IRecognizer
                 switch (result)
                 {
                     case SessionResult.SuspendedBySilence:
-                        consecutiveFailures = 0;
-                        everStarted = true;
                         continue;
 
                     case SessionResult.Completed:
-                        consecutiveFailures = 0;
-                        everStarted = true;
                         continue;
 
                     case SessionResult.Failed:
-                        consecutiveFailures++;
+                        var consecutiveFailures = retryState.RecordFailure();
                         if (!_config.AutoSuspend)
                         {
                             // 未开启自动挂起：保持旧行为，报错并结束
@@ -257,7 +266,7 @@ public class LLMAudioRecognizer : IRecognizer
                             return;
                         }
 
-                        if (!everStarted || consecutiveFailures >= MaxConsecutiveFailures)
+                        if (retryState.RetryLimitReached(MaxConsecutiveFailures))
                         {
                             // 从未成功建立会话（多半是 Key/网络配置问题）或连续失败过多：报错并停止重试
                             RaiseException(gen, new InvalidOperationException(
@@ -280,7 +289,7 @@ public class LLMAudioRecognizer : IRecognizer
         }
     }
 
-    private enum SessionResult
+    internal enum SessionResult
     {
         /// <summary>静音超时，已优雅结束会话进入挂起。</summary>
         SuspendedBySilence,
@@ -305,7 +314,7 @@ public class LLMAudioRecognizer : IRecognizer
     }
 
     /// <summary>运行一个完整的 WebSocket 识别会话，直到静音挂起、取消或失败。</summary>
-    private async Task<SessionResult> RunSessionAsync(CancellationToken ct)
+    private async Task<SessionResult> RunSessionAsync(CancellationToken ct, Action onSessionStarted)
     {
         var gen = Interlocked.Read(ref _generation);
         var taskId = Guid.NewGuid().ToString("N");
@@ -329,6 +338,7 @@ public class LLMAudioRecognizer : IRecognizer
                 throw new InvalidOperationException(session.FailMessage);
             if (!session.Started.Task.Result)
                 throw new InvalidOperationException("连接在任务启动前被关闭");
+            onSessionStarted();
 
             // 会话就绪：先补发挂起期间的预滚缓冲，再切换 Feed 直通队列
             lock (_preRollLock)

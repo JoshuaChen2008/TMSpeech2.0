@@ -7,5 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\TMSpeech.Core\TMSpeech.Core.csproj" />
+    <ProjectReference Include="..\..\src\Plugins\TMSpeech.Recognizer.LLMAudio\TMSpeech.Recognizer.LLMAudio.csproj" />
   </ItemGroup>
 </Project>
