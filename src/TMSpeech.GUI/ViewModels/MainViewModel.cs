@@ -15,6 +15,23 @@ using TMSpeech.Core.Services.Notification;
 
 namespace TMSpeech.GUI.ViewModels;
 
+/// <summary>把某个配置键变成可观察序列：先给当前值，之后每次配置变化时推送新值。</summary>
+internal static class ConfigObservables
+{
+    public static IObservable<T> Get<T>(string key)
+    {
+        return Observable.Return(ConfigManagerFactory.Instance.Get<T>(key))
+            .Merge(
+                Observable.FromEventPattern<ConfigChangedEventArgs>(
+                        p => ConfigManagerFactory.Instance.ConfigChanged += p,
+                        p => ConfigManagerFactory.Instance.ConfigChanged -= p)
+                    .Where(x => x.EventArgs.Contains(key))
+                    .Select(x =>
+                        ConfigManagerFactory.Instance.Get<T>(key)
+                    ));
+    }
+}
+
 public class CaptionStyleViewModel : ViewModelBase
 {
     [ObservableAsProperty]
@@ -44,18 +61,7 @@ public class CaptionStyleViewModel : ViewModelBase
     [ObservableAsProperty]
     public string Text { get; }
 
-    private IObservable<T> GetPropObservable<T>(string key)
-    {
-        return Observable.Return(ConfigManagerFactory.Instance.Get<T>(key))
-            .Merge(
-                Observable.FromEventPattern<ConfigChangedEventArgs>(
-                        p => ConfigManagerFactory.Instance.ConfigChanged += p,
-                        p => ConfigManagerFactory.Instance.ConfigChanged -= p)
-                    .Where(x => x.EventArgs.Contains(key))
-                    .Select(x =>
-                        ConfigManagerFactory.Instance.Get<T>(key)
-                    ));
-    }
+    private IObservable<T> GetPropObservable<T>(string key) => ConfigObservables.Get<T>(key);
 
     public CaptionStyleViewModel(MainViewModel mainViewModel)
     {
@@ -127,12 +133,36 @@ public class MainViewModel : ViewModelBase
     [Reactive]
     public bool IsLocked { get; set; }
 
+    // ---- 锁定后悬浮控制条 ----
+
+    /// <summary>锁定且用户开启了悬浮控制条时为 true。</summary>
+    [ObservableAsProperty]
+    public bool LockBarVisible { get; }
+
+    [ObservableAsProperty]
+    public bool LockBarUnlockVisible { get; }
+
+    [ObservableAsProperty]
+    public bool LockBarPlayVisible { get; }
+
+    [ObservableAsProperty]
+    public bool LockBarStopVisible { get; }
+
+    [ObservableAsProperty]
+    public bool LockBarRestartVisible { get; }
+
+    [ObservableAsProperty]
+    public bool LockBarExitVisible { get; }
+
     public ObservableCollection<TextInfo> HistoryTexts { get; } = new();
 
     public ReactiveCommand<Unit, Unit> PlayCommand { get; }
     public ReactiveCommand<Unit, Unit> PauseCommand { get; }
     public ReactiveCommand<Unit, Unit> StopCommand { get; }
+    public ReactiveCommand<Unit, Unit> RestartCommand { get; }
     public ReactiveCommand<Unit, Unit> LockCommand { get; }
+    public ReactiveCommand<Unit, Unit> UnlockCommand { get; }
+    public ReactiveCommand<Unit, Unit> ExitCommand { get; }
 
     private readonly JobManager _jobManager;
 
@@ -173,6 +203,40 @@ public class MainViewModel : ViewModelBase
             }
         });
 
+        this.UnlockCommand = ReactiveCommand.Create(() => { IsLocked = false; });
+
+        this.ExitCommand = ReactiveCommand.Create(() => { (App.Current as App)?.ExitApplication(); });
+
+        // 锁定后悬浮控制条：总开关 + 各按钮可见性（设置里可配置）
+        this.WhenAnyValue(x => x.IsLocked)
+            .CombineLatest(ConfigObservables.Get<bool>(LockConfigTypes.ShowControlBar),
+                (locked, show) => locked && show)
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .ToPropertyEx(this, x => x.LockBarVisible);
+
+        ConfigObservables.Get<bool>(LockConfigTypes.ShowUnlock)
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .ToPropertyEx(this, x => x.LockBarUnlockVisible);
+
+        ConfigObservables.Get<bool>(LockConfigTypes.ShowPlayStop)
+            .CombineLatest(this.WhenAnyValue(x => x.PlayButtonVisible), (show, play) => show && play)
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .ToPropertyEx(this, x => x.LockBarPlayVisible);
+
+        ConfigObservables.Get<bool>(LockConfigTypes.ShowPlayStop)
+            .CombineLatest(this.WhenAnyValue(x => x.StopButtonVisible), (show, stop) => show && stop)
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .ToPropertyEx(this, x => x.LockBarStopVisible);
+
+        ConfigObservables.Get<bool>(LockConfigTypes.ShowRestart)
+            .CombineLatest(this.WhenAnyValue(x => x.StopButtonVisible), (show, running) => show && running)
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .ToPropertyEx(this, x => x.LockBarRestartVisible);
+
+        ConfigObservables.Get<bool>(LockConfigTypes.ShowExit)
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .ToPropertyEx(this, x => x.LockBarExitVisible);
+
         this.PlayCommand = ReactiveCommand.CreateFromTask(
             async () =>
             {
@@ -186,6 +250,17 @@ public class MainViewModel : ViewModelBase
             this.WhenAnyValue(x => x.PauseButtonVisible));
         this.StopCommand = ReactiveCommand.CreateFromTask(
             async () => { await Task.Run(() => { _jobManager.Stop(); }); },
+            this.WhenAnyValue(x => x.StopButtonVisible));
+        this.RestartCommand = ReactiveCommand.CreateFromTask(
+            async () =>
+            {
+                await App.PluginsLoadTask;
+                await Task.Run(() =>
+                {
+                    _jobManager.Stop();
+                    _jobManager.Start();
+                });
+            },
             this.WhenAnyValue(x => x.StopButtonVisible));
 
         // Subscribe to exceptions with proper UI notifications
@@ -214,6 +289,16 @@ public class MainViewModel : ViewModelBase
             await MessageBoxManager.GetMessageBoxStandard(
                 "停止失败",
                 $"无法停止语音识别。\n\n错误详情：{ex.Message}",
+                ButtonEnum.Ok,
+                Icon.Warning
+            ).ShowAsync();
+        });
+
+        this.RestartCommand.ThrownExceptions.Subscribe(async ex =>
+        {
+            await MessageBoxManager.GetMessageBoxStandard(
+                "重启失败",
+                $"无法重启语音识别。\n\n错误详情：{ex.Message}",
                 ButtonEnum.Ok,
                 Icon.Warning
             ).ShowAsync();

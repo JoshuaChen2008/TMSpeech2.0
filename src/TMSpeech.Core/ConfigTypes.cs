@@ -86,6 +86,38 @@ public static class NotificationConfigTypes
     public static Dictionary<string, object> DefaultConfig => _defaultConfig;
 }
 
+/// <summary>锁定字幕后悬浮控制条的配置：锁定后仍可点击哪些按钮，由用户自行选择。</summary>
+public static class LockConfigTypes
+{
+    public const string SectionName = "lock";
+
+    /// <summary>锁定后是否显示悬浮控制条（总开关）。</summary>
+    public const string ShowControlBar = "lock.ShowControlBar";
+
+    /// <summary>控制条中显示"解锁"按钮。</summary>
+    public const string ShowUnlock = "lock.ShowUnlock";
+
+    /// <summary>控制条中显示"开始/停止识别"按钮。</summary>
+    public const string ShowPlayStop = "lock.ShowPlayStop";
+
+    /// <summary>控制条中显示"重启识别"按钮。</summary>
+    public const string ShowRestart = "lock.ShowRestart";
+
+    /// <summary>控制条中显示"退出程序"按钮。</summary>
+    public const string ShowExit = "lock.ShowExit";
+
+    private static Dictionary<string, object> _defaultConfig => new()
+    {
+        { ShowControlBar, true },
+        { ShowUnlock, true },
+        { ShowPlayStop, true },
+        { ShowRestart, true },
+        { ShowExit, false }
+    };
+
+    public static Dictionary<string, object> DefaultConfig => _defaultConfig;
+}
+
 public static class AudioSourceConfigTypes
 {
     public const string SectionName = "audio";

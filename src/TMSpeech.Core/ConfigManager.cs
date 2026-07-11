@@ -69,9 +69,12 @@ public abstract class ConfigManager
 
 class LocalConfigManagerImpl : ConfigManager
 {
+    private readonly Dictionary<string, object> _defaultConfig;
+
     public LocalConfigManagerImpl(Dictionary<string, object> defaultConfig) : base()
     {
-        _config = defaultConfig;
+        _defaultConfig = new Dictionary<string, object>(defaultConfig);
+        _config = new Dictionary<string, object>(_defaultConfig);
         Load();
     }
 
@@ -141,7 +144,10 @@ class LocalConfigManagerImpl : ConfigManager
                 });
             if (value == null) return;
 
-            _config = value;
+            // 以默认配置为底、用户配置覆盖，保证升级后新增的配置键有默认值
+            var merged = new Dictionary<string, object>(_defaultConfig);
+            foreach (var kv in value) merged[kv.Key] = kv.Value;
+            _config = merged;
         }
         catch (FileNotFoundException)
         {

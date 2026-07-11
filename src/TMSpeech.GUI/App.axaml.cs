@@ -48,6 +48,26 @@ public partial class App : Application
         }
     }
 
+    /// <summary>保存窗口位置并退出程序。托盘菜单与锁定控制条共用。</summary>
+    public void ExitApplication()
+    {
+        try
+        {
+            var left = _mainWindow.Position.X;
+            var top = _mainWindow.Position.Y;
+            var width = (int)_mainWindow.Width;
+            var height = (int)_mainWindow.Height;
+            ConfigManagerFactory.Instance.Apply<List<int>>(GeneralConfigTypes.MainWindowLocation,
+                [left, top, width, height]);
+        }
+        catch
+        {
+            // 保存位置失败不阻止退出
+        }
+
+        Environment.Exit(0);
+    }
+
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)

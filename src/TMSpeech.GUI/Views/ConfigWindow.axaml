@@ -44,30 +44,52 @@
             <TextBlock>通用</TextBlock>
           </StackPanel>
         </TabItem.Header>
-        <controls:AutoGrid RowCount="100" ColumnDefinitions="115,*" DataContext="{Binding GeneralSectionConfig}">
-          <Label IsVisible="False">语言</Label>
-          <ComboBox IsVisible="False" SelectedValueBinding="{Binding Key}" SelectedValue="{Binding  Language,Mode=TwoWay}"
-                    Name="comboLanguage" ItemsSource="{Binding LanguagesAvailable}">
-            <ComboBox.ItemTemplate>
-              <DataTemplate>
-                <TextBlock Text="{Binding Value}"></TextBlock>
-              </DataTemplate>
-            </ComboBox.ItemTemplate>
-          </ComboBox>
-          <!--
-          <Label>用户数据目录</Label>
-          <controls:FilePicker Text="{Binding UserDir,Mode=TwoWay}" ExtendedOptions="True" Type="Folder" />
-           -->
-          <Label IsVisible="False">开机启动</Label>
-          <CheckBox IsVisible="False" IsChecked="{Binding LaunchOnStartup,Mode=TwoWay}" />
-          <Label>启动开始识别</Label>
-          <CheckBox IsChecked="{Binding StartOnLaunch,Mode=TwoWay}" />
-          <Label>识别日志文件夹</Label>
-          <TextBox Text="{Binding ResultLogPath,Mode=TwoWay}"></TextBox>
-          <Label IsVisible="False">自动更新</Label>
-          <CheckBox IsVisible="False" IsChecked="{Binding AutoUpdate,Mode=TwoWay}" />
-        </controls:AutoGrid>
-       
+        <StackPanel>
+          <controls:AutoGrid RowCount="100" ColumnDefinitions="115,*" DataContext="{Binding GeneralSectionConfig}">
+            <Label IsVisible="False">语言</Label>
+            <ComboBox IsVisible="False" SelectedValueBinding="{Binding Key}" SelectedValue="{Binding  Language,Mode=TwoWay}"
+                      Name="comboLanguage" ItemsSource="{Binding LanguagesAvailable}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Value}"></TextBlock>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <!--
+            <Label>用户数据目录</Label>
+            <controls:FilePicker Text="{Binding UserDir,Mode=TwoWay}" ExtendedOptions="True" Type="Folder" />
+             -->
+            <Label IsVisible="False">开机启动</Label>
+            <CheckBox IsVisible="False" IsChecked="{Binding LaunchOnStartup,Mode=TwoWay}" />
+            <Label>启动开始识别</Label>
+            <CheckBox IsChecked="{Binding StartOnLaunch,Mode=TwoWay}" />
+            <Label>识别日志文件夹</Label>
+            <TextBox Text="{Binding ResultLogPath,Mode=TwoWay}"></TextBox>
+            <Label IsVisible="False">自动更新</Label>
+            <CheckBox IsVisible="False" IsChecked="{Binding AutoUpdate,Mode=TwoWay}" />
+          </controls:AutoGrid>
+
+          <StackPanel DataContext="{Binding LockSectionConfig}" Margin="16,8,16,0">
+            <TextBlock FontWeight="Bold" Margin="5,0,0,4">锁定字幕后的悬浮按钮</TextBlock>
+            <TextBlock Foreground="Gray" FontSize="12" Margin="5,0,0,4" TextWrapping="Wrap">
+              锁定后字幕窗口鼠标穿透，以下勾选的按钮会以悬浮小条显示在字幕右上角，无需解锁即可操作。
+            </TextBlock>
+            <controls:AutoGrid RowCount="100" ColumnDefinitions="115,*" Margin="0">
+              <Label>显示悬浮按钮</Label>
+              <CheckBox IsChecked="{Binding ShowControlBar,Mode=TwoWay}" />
+            </controls:AutoGrid>
+            <controls:AutoGrid RowCount="100" ColumnDefinitions="115,*" Margin="0" IsEnabled="{Binding ShowControlBar}">
+              <Label>解锁字幕</Label>
+              <CheckBox IsChecked="{Binding ShowUnlock,Mode=TwoWay}" />
+              <Label>开始 / 停止识别</Label>
+              <CheckBox IsChecked="{Binding ShowPlayStop,Mode=TwoWay}" />
+              <Label>重启识别</Label>
+              <CheckBox IsChecked="{Binding ShowRestart,Mode=TwoWay}" />
+              <Label>退出程序</Label>
+              <CheckBox IsChecked="{Binding ShowExit,Mode=TwoWay}" />
+            </controls:AutoGrid>
+          </StackPanel>
+        </StackPanel>
 
       </TabItem>
       <TabItem>

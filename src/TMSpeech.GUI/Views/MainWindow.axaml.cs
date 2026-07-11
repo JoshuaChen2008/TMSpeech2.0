@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Reactive.Disposables;
 using System.Runtime.InteropServices;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.ReactiveUI;
+using Avalonia.Threading;
 using ReactiveUI;
 using TMSpeech.GUI.ViewModels;
 
@@ -24,8 +26,39 @@ public partial class MainWindow : ReactiveWindow<MainViewModel>
                     SetCaptionLock(l);
                     (App.Current as App).UpdateTrayMenu();
                 }).DisposeWith(d);
+
+            this.ViewModel.WhenAnyValue(x => x.LockBarVisible)
+                .Subscribe(visible =>
+                {
+                    if (visible) ShowLockBar();
+                    else _lockBar?.Hide();
+                }).DisposeWith(d);
         });
     }
+
+    #region Lock Control Bar
+
+    private LockBarWindow? _lockBar;
+
+    /// <summary>显示锁定悬浮控制条，并放置在字幕窗口右上角。</summary>
+    private void ShowLockBar()
+    {
+        _lockBar ??= new LockBarWindow { DataContext = ViewModel };
+
+        _lockBar.Show();
+
+        // 等控制条完成布局后再按其实际宽度定位到字幕窗口右上角
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_lockBar == null || !_lockBar.IsVisible) return;
+            var topRight = this.PointToScreen(new Point(this.Width, 0));
+            var barWidth = (int)(_lockBar.Bounds.Width * _lockBar.RenderScaling);
+            var pad = (int)(4 * _lockBar.RenderScaling);
+            _lockBar.Position = new PixelPoint(topRight.X - barWidth - pad, topRight.Y + pad);
+        }, DispatcherPriority.Loaded);
+    }
+
+    #endregion
 
     #region Set Caption Lock Style
 

@@ -156,6 +156,7 @@ namespace TMSpeech.GUI.ViewModels
         public AudioSectionConfigViewModel AudioSectionConfig { get; } = new AudioSectionConfigViewModel();
         public RecognizeSectionConfigViewModel RecognizeSectionConfig { get; } = new RecognizeSectionConfigViewModel();
         public NotificationConfigViewModel NotificationConfig { get; } = new NotificationConfigViewModel();
+        public LockSectionConfigViewModel LockSectionConfig { get; } = new LockSectionConfigViewModel();
 
         [ObservableAsProperty]
         public bool IsNotRunning { get; }
@@ -212,6 +213,32 @@ namespace TMSpeech.GUI.ViewModels
         [Reactive]
         [ConfigJsonValue]
         public List<int> MainWindowLocation { get; set; } = [];
+    }
+
+    /// <summary>锁定字幕后悬浮控制条的设置：显示哪些按钮由用户选择。</summary>
+    public class LockSectionConfigViewModel : SectionConfigViewModelBase
+    {
+        protected override string SectionName => LockConfigTypes.SectionName;
+
+        [Reactive]
+        [ConfigJsonValue]
+        public bool ShowControlBar { get; set; } = true;
+
+        [Reactive]
+        [ConfigJsonValue]
+        public bool ShowUnlock { get; set; } = true;
+
+        [Reactive]
+        [ConfigJsonValue]
+        public bool ShowPlayStop { get; set; } = true;
+
+        [Reactive]
+        [ConfigJsonValue]
+        public bool ShowRestart { get; set; } = true;
+
+        [Reactive]
+        [ConfigJsonValue]
+        public bool ShowExit { get; set; }
     }
 
     public class AppearanceSectionConfigViewModel : SectionConfigViewModelBase
