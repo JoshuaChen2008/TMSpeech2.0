@@ -58,8 +58,13 @@ namespace TMSpeech.Core
 
 
         internal JobManagerImpl()
+            : this(PluginManagerFactory.GetInstance())
         {
-            _pluginManager = PluginManagerFactory.GetInstance();
+        }
+
+        internal JobManagerImpl(PluginManager pluginManager)
+        {
+            _pluginManager = pluginManager;
         }
 
         private IAudioSource? _audioSource;
@@ -68,8 +73,13 @@ namespace TMSpeech.Core
         private bool _disableInThisSentence = false;
         private string logFile;
         private string currentText = "";
+        private readonly PluginFailureStopCoordinator _failureStopCoordinator = new();
+        private readonly object _lifecycleLock = new();
+        private long _sessionGeneration;
+        private EventHandler<Exception>? _audioSourceExceptionHandler;
+        private EventHandler<Exception>? _recognizerExceptionHandler;
 
-        private void InitAudioSource()
+        private void InitAudioSource(long generation)
         {
             var configAudioSource = ConfigManagerFactory.Instance.Get<string>(AudioSourceConfigTypes.AudioSource);
             var config = ConfigManagerFactory.Instance.Get<string>(AudioSourceConfigTypes.GetPluginConfigKey(configAudioSource));
@@ -80,8 +90,8 @@ namespace TMSpeech.Core
                 _audioSource.LoadConfig(config);
                 _audioSource.DataAvailable -= OnAudioSourceOnDataAvailable;
                 _audioSource.DataAvailable += OnAudioSourceOnDataAvailable;
-                _audioSource.ExceptionOccured -= OnPluginRunningExceptionOccurs;
-                _audioSource.ExceptionOccured += OnPluginRunningExceptionOccurs;
+                _audioSourceExceptionHandler = (sender, ex) => OnPluginRunningExceptionOccurs(sender, ex, generation);
+                _audioSource.ExceptionOccured += _audioSourceExceptionHandler;
             }
         }
 
@@ -94,7 +104,7 @@ namespace TMSpeech.Core
             _recognizer?.Feed(data);
         }
 
-        private void InitRecognizer()
+        private void InitRecognizer(long generation)
         {
             var configRecognizer = ConfigManagerFactory.Instance.Get<string>(RecognizerConfigTypes.Recognizer);
             var config = ConfigManagerFactory.Instance.Get<string>(RecognizerConfigTypes.GetPluginConfigKey(configRecognizer));
@@ -114,8 +124,8 @@ namespace TMSpeech.Core
                 _recognizer.TextChanged += OnRecognizerOnTextChanged;
                 _recognizer.SentenceDone -= OnRecognizerOnSentenceDone;
                 _recognizer.SentenceDone += OnRecognizerOnSentenceDone;
-                _recognizer.ExceptionOccured -= OnPluginRunningExceptionOccurs;
-                _recognizer.ExceptionOccured += OnPluginRunningExceptionOccurs;
+                _recognizerExceptionHandler = (sender, ex) => OnPluginRunningExceptionOccurs(sender, ex, generation);
+                _recognizer.ExceptionOccured += _recognizerExceptionHandler;
             }
         }
 
@@ -161,11 +171,11 @@ namespace TMSpeech.Core
             OnTextChanged(args);
         }
 
-        private void StartRecognize()
+        private void StartRecognize(long generation)
         {
             InitSensitiveWords();
-            InitAudioSource();
-            InitRecognizer();
+            InitAudioSource(generation);
+            InitRecognizer(generation);
 
             if (_audioSource == null || _recognizer == null)
             {
@@ -241,12 +251,25 @@ namespace TMSpeech.Core
                 StringSplitOptions.RemoveEmptyEntries));
         }
 
-        private void OnPluginRunningExceptionOccurs(object? e, Exception ex)
+        private void OnPluginRunningExceptionOccurs(object? e, Exception ex, long generation)
         {
             NotificationManager.Instance.Notify($"插件运行异常:\n ({e?.GetType().Module.Name})：{ex.Message}",
                 "插件异常", NotificationType.Error);
-            // 只能在主线程stop。
-            // Stop();
+
+            // 插件异常通常由其后台收发任务触发。不要在该回调线程中同步 Stop，
+            // 否则插件清理代码可能等待当前任务结束而形成自等待。
+            // 收发两端可能同时上报同一故障，因此只排队一次统一清理。
+            _failureStopCoordinator.TrySchedule(generation, () => StopFailedSession(generation));
+        }
+
+        private void StopFailedSession(long generation)
+        {
+            lock (_lifecycleLock)
+            {
+                if (generation != _sessionGeneration) return;
+                _sessionGeneration++;
+                StopCore();
+            }
         }
 
 
@@ -275,33 +298,54 @@ namespace TMSpeech.Core
             }
 
             _audioSource.DataAvailable -= OnAudioSourceOnDataAvailable;
-            _audioSource.ExceptionOccured -= OnPluginRunningExceptionOccurs;
+            if (_audioSourceExceptionHandler != null)
+                _audioSource.ExceptionOccured -= _audioSourceExceptionHandler;
 
             _recognizer.TextChanged -= OnRecognizerOnTextChanged;
             _recognizer.SentenceDone -= OnRecognizerOnSentenceDone;
-            _recognizer.ExceptionOccured -= OnPluginRunningExceptionOccurs;
+            if (_recognizerExceptionHandler != null)
+                _recognizer.ExceptionOccured -= _recognizerExceptionHandler;
 
 
             _audioSource = null;
             _recognizer = null;
+            _audioSourceExceptionHandler = null;
+            _recognizerExceptionHandler = null;
         }
 
         public override void Start()
         {
-            if (Status == JobStatus.Running) return;
-            StartRecognize();
+            lock (_lifecycleLock)
+            {
+                if (Status == JobStatus.Running) return;
+                var generation = ++_sessionGeneration;
+                StartRecognize(generation);
+            }
         }
 
         public override void Pause()
         {
-            if (Status == JobStatus.Running) StopRecognize();
-            Status = JobStatus.Paused;
+            lock (_lifecycleLock)
+            {
+                _sessionGeneration++;
+                if (Status == JobStatus.Running) StopRecognize();
+                Status = JobStatus.Paused;
 
-            _timer?.Dispose();
-            _timer = null;
+                _timer?.Dispose();
+                _timer = null;
+            }
         }
 
         public override void Stop()
+        {
+            lock (_lifecycleLock)
+            {
+                _sessionGeneration++;
+                StopCore();
+            }
+        }
+
+        private void StopCore()
         {
             if (Status == JobStatus.Running) StopRecognize();
             Status = JobStatus.Stopped;
