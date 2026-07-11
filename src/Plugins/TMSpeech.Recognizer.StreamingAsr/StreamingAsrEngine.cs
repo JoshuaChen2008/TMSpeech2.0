@@ -29,7 +29,10 @@ public class StreamingAsrEngine
     private TaskCompletionSource<bool>? _startedTcs;
 
     private volatile bool _running;
+    private int _failureSignaled;
     private const int MaxQueuedChunks = 200;
+
+    internal Task WorkerCompletion => _worker ?? Task.CompletedTask;
 
     public StreamingAsrEngine(StreamingAsrProfile profile, Dictionary<string, string> vars)
     {
@@ -43,6 +46,7 @@ public class StreamingAsrEngine
     {
         if (_running) throw new InvalidOperationException("流式识别引擎：已在运行中");
         _running = true;
+        _failureSignaled = 0;
         _cts = new CancellationTokenSource();
         _sendQueue = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>());
         _startedTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -113,7 +117,7 @@ public class StreamingAsrEngine
         }
         catch (Exception ex)
         {
-            if (_running) OnError?.Invoke(ex);
+            SignalFailure(ex);
         }
     }
 
@@ -176,7 +180,12 @@ public class StreamingAsrEngine
                 do
                 {
                     result = await _ws.ReceiveAsync(new ArraySegment<byte>(buffer), ct);
-                    if (result.MessageType == WebSocketMessageType.Close) return;
+                    if (result.MessageType == WebSocketMessageType.Close)
+                    {
+                        SignalFailure(new WebSocketException(
+                            $"流式识别连接被服务端关闭：{result.CloseStatus} {result.CloseStatusDescription}"));
+                        return;
+                    }
                     sb.Write(buffer, 0, result.Count);
                 } while (!result.EndOfMessage);
 
@@ -189,7 +198,7 @@ public class StreamingAsrEngine
         }
         catch (Exception ex)
         {
-            if (_running) OnError?.Invoke(ex);
+            SignalFailure(ex);
         }
     }
 
@@ -209,7 +218,7 @@ public class StreamingAsrEngine
                     var m = string.IsNullOrEmpty(_profile.Error.MessagePath)
                         ? "任务失败"
                         : JsonPathResolver.GetString(root, _profile.Error.MessagePath!);
-                    OnError?.Invoke(new InvalidOperationException($"流式识别：任务失败：{m}"));
+                    SignalFailure(new InvalidOperationException($"流式识别：任务失败：{m}"));
                 }
 
                 return;
@@ -240,6 +249,15 @@ public class StreamingAsrEngine
         {
             // 单条消息解析失败不影响整体
         }
+    }
+
+    private void SignalFailure(Exception ex)
+    {
+        if (!_running || Interlocked.Exchange(ref _failureSignaled, 1) != 0) return;
+
+        try { _sendQueue?.CompleteAdding(); } catch (InvalidOperationException) { }
+        try { _cts?.Cancel(); } catch (ObjectDisposedException) { }
+        OnError?.Invoke(ex);
     }
 
     // ---- 发送 ----

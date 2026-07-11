@@ -1,12 +1,16 @@
 using TMSpeech.Core;
 using TMSpeech.Core.Plugins;
 using TMSpeech.Recognizer.LLMAudio;
+using TMSpeech.Recognizer.StreamingAsr;
+using System.Net.Sockets;
+using System.Security.Cryptography;
+using System.Text;
 
 try
 {
-    if (args.Length != 1 || args[0] != "plugin-failure-stop")
+    if (args.Length != 1 || args[0] != "all")
     {
-        Console.Error.WriteLine("Usage: TMSpeech.Core.RuntimeChecks plugin-failure-stop");
+        Console.Error.WriteLine("Usage: TMSpeech.Core.RuntimeChecks all");
         return 2;
     }
 
@@ -140,7 +144,150 @@ if (Volatile.Read(ref sessionCalls) < 2)
     throw new InvalidOperationException("已建立的会话断线后没有进入第二次会话");
 
 Console.WriteLine("PASS llm-audio-worker-retries-established-session");
+
+await RunStreamingFailureCase("abrupt-disconnect", async stream => await Task.Delay(100));
+await RunStreamingFailureCase("close-frame", stream => SendServerFrame(stream, 0x8, new byte[] { 0x03, 0xE8 }));
+await RunStreamingFailureCase("protocol-error", stream =>
+    SendServerFrame(stream, 0x1, Encoding.UTF8.GetBytes("{\"type\":\"error\",\"message\":\"expected\"}")),
+    profile =>
+    {
+        profile.Result.EventPath = "type";
+        profile.Error.EventValue = "error";
+        profile.Error.MessagePath = "message";
+    });
+await RunStreamingNormalStopCase();
+
+Console.WriteLine("PASS streaming-asr-terminal-failures-stop-worker");
 return 0;
+
+async Task RunStreamingFailureCase(string name, Func<NetworkStream, Task> serverAction,
+    Action<StreamingAsrProfile>? configureProfile = null)
+{
+    var listener = new TcpListener(System.Net.IPAddress.Loopback, 0);
+    listener.Start();
+    var port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
+    var serverTask = Task.Run(async () =>
+    {
+        using var client = await listener.AcceptTcpClientAsync();
+        await using var stream = client.GetStream();
+        await CompleteWebSocketHandshake(stream);
+        await serverAction(stream);
+        await stream.FlushAsync();
+        await Task.Delay(100);
+    });
+
+    var profile = new StreamingAsrProfile
+    {
+        Name = name,
+        UrlTemplate = $"ws://127.0.0.1:{port}/",
+        Auth = new AuthSpec { Provider = "none" },
+        Audio = new AudioSpec { Mode = "binary" }
+    };
+    configureProfile?.Invoke(profile);
+
+    var engine = new StreamingAsrEngine(profile, new Dictionary<string, string>());
+    var error = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
+    var errorCount = 0;
+    engine.OnError += ex =>
+    {
+        Interlocked.Increment(ref errorCount);
+        error.TrySetResult(ex);
+    };
+
+    try
+    {
+        engine.Start();
+        await error.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await engine.WorkerCompletion.WaitAsync(TimeSpan.FromSeconds(5));
+        await serverTask.WaitAsync(TimeSpan.FromSeconds(5));
+        if (Volatile.Read(ref errorCount) != 1)
+            throw new InvalidOperationException($"{name} 错误上报次数错误: {errorCount}");
+    }
+    finally
+    {
+        engine.Stop();
+        listener.Stop();
+    }
+}
+
+static async Task CompleteWebSocketHandshake(NetworkStream stream)
+{
+    var requestBuffer = new byte[4096];
+    var requestLength = 0;
+    while (requestLength < requestBuffer.Length)
+    {
+        var read = await stream.ReadAsync(requestBuffer.AsMemory(requestLength));
+        if (read == 0) throw new IOException("WebSocket 握手请求提前结束");
+        requestLength += read;
+        if (Encoding.ASCII.GetString(requestBuffer, 0, requestLength).Contains("\r\n\r\n")) break;
+    }
+
+    var request = Encoding.ASCII.GetString(requestBuffer, 0, requestLength);
+    var keyLine = request.Split("\r\n")
+        .First(line => line.StartsWith("Sec-WebSocket-Key:", StringComparison.OrdinalIgnoreCase));
+    var key = keyLine[(keyLine.IndexOf(':') + 1)..].Trim();
+    var acceptBytes = SHA1.HashData(Encoding.ASCII.GetBytes(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"));
+    var response = Encoding.ASCII.GetBytes(
+        $"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {Convert.ToBase64String(acceptBytes)}\r\n\r\n");
+    await stream.WriteAsync(response);
+    await stream.FlushAsync();
+}
+
+static async Task SendServerFrame(NetworkStream stream, byte opcode, byte[] payload)
+{
+    if (payload.Length > 125) throw new ArgumentOutOfRangeException(nameof(payload));
+    var frame = new byte[payload.Length + 2];
+    frame[0] = (byte)(0x80 | opcode);
+    frame[1] = (byte)payload.Length;
+    Buffer.BlockCopy(payload, 0, frame, 2, payload.Length);
+    await stream.WriteAsync(frame);
+}
+
+async Task RunStreamingNormalStopCase()
+{
+    var listener = new TcpListener(System.Net.IPAddress.Loopback, 0);
+    listener.Start();
+    var port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
+    var handshakeCompleted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    var serverTask = Task.Run(async () =>
+    {
+        using var client = await listener.AcceptTcpClientAsync();
+        await using var stream = client.GetStream();
+        await CompleteWebSocketHandshake(stream);
+        handshakeCompleted.SetResult();
+        await Task.Delay(250);
+        await SendServerFrame(stream, 0x8, new byte[] { 0x03, 0xE8 });
+        await stream.FlushAsync();
+    });
+
+    var engine = new StreamingAsrEngine(new StreamingAsrProfile
+    {
+        Name = "normal-stop",
+        UrlTemplate = $"ws://127.0.0.1:{port}/",
+        Auth = new AuthSpec { Provider = "none" },
+        Audio = new AudioSpec { Mode = "binary" }
+    }, new Dictionary<string, string>());
+    var errorCount = 0;
+    engine.OnError += _ => Interlocked.Increment(ref errorCount);
+
+    try
+    {
+        engine.Start();
+        await handshakeCompleted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        engine.Stop();
+        await engine.WorkerCompletion.WaitAsync(TimeSpan.FromSeconds(5));
+        await serverTask.WaitAsync(TimeSpan.FromSeconds(5));
+        if (Volatile.Read(ref errorCount) != 0)
+            throw new InvalidOperationException($"主动停止被错误上报为故障: {errorCount}");
+    }
+    finally
+    {
+        engine.Stop();
+        listener.Stop();
+    }
+
+    Console.WriteLine("PASS streaming-asr-normal-stop-has-no-error");
+}
 }
 catch (Exception ex)
 {

@@ -8,5 +8,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\TMSpeech.Core\TMSpeech.Core.csproj" />
     <ProjectReference Include="..\..\src\Plugins\TMSpeech.Recognizer.LLMAudio\TMSpeech.Recognizer.LLMAudio.csproj" />
+    <ProjectReference Include="..\..\src\Plugins\TMSpeech.Recognizer.StreamingAsr\TMSpeech.Recognizer.StreamingAsr.csproj" />
   </ItemGroup>
 </Project>
