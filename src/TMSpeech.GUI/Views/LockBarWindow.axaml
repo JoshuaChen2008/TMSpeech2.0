@@ -32,16 +32,22 @@
       <Setter Property="Padding" Value="0" />
       <Setter Property="Margin" Value="1" />
       <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="999" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#24FFFFFF" />
     </Style>
     <Style Selector="PathIcon">
       <Setter Property="Height" Value="13" />
       <Setter Property="Width" Value="13" />
-      <Setter Property="Foreground" Value="White" />
+      <Setter Property="Foreground" Value="#F2FFFFFF" />
     </Style>
   </Window.Styles>
-  <Border CornerRadius="6" Background="#CC202020" Padding="3">
+  <Border CornerRadius="999" Background="#E01D232C"
+          BorderBrush="#26FFFFFF" BorderThickness="1" Padding="4,3">
     <StackPanel Orientation="Horizontal">
       <Button IsVisible="{Binding LockBarUnlockVisible}" Command="{Binding UnlockCommand}"
               ToolTip.Tip="解锁字幕">

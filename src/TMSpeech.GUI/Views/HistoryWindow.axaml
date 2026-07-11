@@ -7,17 +7,28 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="250"
-        Width="400" Height="600"
+        Width="420" Height="600"
         x:Class="TMSpeech.GUI.Views.HistoryWindow"
         Icon="/Assets/tmspeech.ico"
         FontFamily="{StaticResource GlobalFontFamily}"
+        Background="{DynamicResource AppBackgroundBrush}"
+        Foreground="{DynamicResource AppForegroundBrush}"
         Title="识别记录">
 
   <Design.DataContext>
     <vm:MainViewModel />
   </Design.DataContext>
 
-  <ScrollViewer Name="scrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-    <controls:HistoryView ItemsSource="{Binding HistoryTexts}" Margin="8"/>
-  </ScrollViewer>
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Padding="16,12"
+            BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="2">
+        <TextBlock Text="识别记录" FontWeight="SemiBold" FontSize="15" />
+        <TextBlock Classes="Small Muted" Text="按住鼠标拖动选择文本，右键复制或全选。" />
+      </StackPanel>
+    </Border>
+    <ScrollViewer Name="scrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <controls:HistoryView ItemsSource="{Binding HistoryTexts}" Margin="10,8" />
+    </ScrollViewer>
+  </DockPanel>
 </Window>

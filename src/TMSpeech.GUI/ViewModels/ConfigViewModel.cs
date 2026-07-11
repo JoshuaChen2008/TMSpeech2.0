@@ -161,8 +161,9 @@ namespace TMSpeech.GUI.ViewModels
         [ObservableAsProperty]
         public bool IsNotRunning { get; }
 
+        // 页签索引：0 通用 / 1 通知 / 2 显示与字幕 / 3 音频源 / 4 语音识别 / 5 资源管理 / 6 关于
         [Reactive]
-        public int CurrentTab { get; set; } = 1;
+        public int CurrentTab { get; set; } = 2;
 
         public ConfigViewModel()
         {
@@ -370,7 +371,12 @@ namespace TMSpeech.GUI.ViewModels
         public AudioSectionConfigViewModel()
         {
             this.RefreshCommand = ReactiveCommand.Create(() => { });
-            this.RefreshCommand.Merge(Observable.Return(Unit.Default))
+            // 插件后台加载完成后自动补一次刷新，避免窗口开得太早时列表为空
+            var pluginsReady = Observable.FromAsync(async () =>
+            {
+                try { await App.PluginsLoadTask; } catch { }
+            });
+            this.RefreshCommand.Merge(Observable.Return(Unit.Default)).Merge(pluginsReady)
                 .SelectMany(u => Observable.FromAsync(() => Task.Run(() => Refresh())))
                 .ToPropertyEx(this, x => x.AudioSourcesAvailable);
 
@@ -474,7 +480,12 @@ namespace TMSpeech.GUI.ViewModels
         public RecognizeSectionConfigViewModel()
         {
             this.RefreshCommand = ReactiveCommand.Create(() => { });
-            this.RefreshCommand.Merge(Observable.Return(Unit.Default))
+            // 插件后台加载完成后自动补一次刷新，避免窗口开得太早时列表为空
+            var pluginsReady = Observable.FromAsync(async () =>
+            {
+                try { await App.PluginsLoadTask; } catch { }
+            });
+            this.RefreshCommand.Merge(Observable.Return(Unit.Default)).Merge(pluginsReady)
                 .SelectMany(u => Observable.FromAsync(() => Task.Run(() => Refresh())))
                 .ToPropertyEx(this, x => x.RecognizersAvailable);
 

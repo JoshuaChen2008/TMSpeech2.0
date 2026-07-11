@@ -1,0 +1,116 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- 设计令牌：与 settings-glass-ui-demo.html 的 CSS 变量保持一致。
+       浅色/深色由 ThemeVariant 切换（App RequestedThemeVariant=Default 跟随系统）。 -->
+  <ResourceDictionary.ThemeDictionaries>
+
+    <ResourceDictionary x:Key="Dark">
+      <Color x:Key="AppBackgroundColor">#FF181818</Color>
+      <Color x:Key="AppForegroundColor">#FFFFFFFF</Color>
+      <Color x:Key="AppCardColor">#0DFFFFFF</Color>
+      <Color x:Key="AppPopoverColor">#FF2D2D2D</Color>
+      <Color x:Key="AppPrimaryColor">#FF83C3FF</Color>
+      <Color x:Key="AppPrimaryForegroundColor">#FF0D0D0D</Color>
+      <Color x:Key="AppMutedForegroundColor">#7FFFFFFF</Color>
+      <Color x:Key="AppAccentColor">#FF0D273F</Color>
+      <Color x:Key="AppDestructiveColor">#FFFF8549</Color>
+      <Color x:Key="AppBorderColor">#15FFFFFF</Color>
+      <Color x:Key="AppInputColor">#26000000</Color>
+      <Color x:Key="AppHoverColor">#12FFFFFF</Color>
+      <Color x:Key="AppNavSelectedColor">#2E83C3FF</Color>
+      <Color x:Key="AppGlassTintColor">#FF161B22</Color>
+      <Color x:Key="AppGlassFallbackColor">#F2181D24</Color>
+
+      <SolidColorBrush x:Key="AppBackgroundBrush" Color="{StaticResource AppBackgroundColor}" />
+      <SolidColorBrush x:Key="AppForegroundBrush" Color="{StaticResource AppForegroundColor}" />
+      <SolidColorBrush x:Key="AppCardBrush" Color="{StaticResource AppCardColor}" />
+      <SolidColorBrush x:Key="AppPopoverBrush" Color="{StaticResource AppPopoverColor}" />
+      <SolidColorBrush x:Key="AppPrimaryBrush" Color="{StaticResource AppPrimaryColor}" />
+      <SolidColorBrush x:Key="AppPrimaryForegroundBrush" Color="{StaticResource AppPrimaryForegroundColor}" />
+      <SolidColorBrush x:Key="AppMutedForegroundBrush" Color="{StaticResource AppMutedForegroundColor}" />
+      <SolidColorBrush x:Key="AppAccentBrush" Color="{StaticResource AppAccentColor}" />
+      <SolidColorBrush x:Key="AppDestructiveBrush" Color="{StaticResource AppDestructiveColor}" />
+      <SolidColorBrush x:Key="AppBorderBrush" Color="{StaticResource AppBorderColor}" />
+      <SolidColorBrush x:Key="AppInputBrush" Color="{StaticResource AppInputColor}" />
+      <SolidColorBrush x:Key="AppHoverBrush" Color="{StaticResource AppHoverColor}" />
+      <SolidColorBrush x:Key="AppNavSelectedBrush" Color="{StaticResource AppNavSelectedColor}" />
+
+      <!-- Fluent 主题接管：强调色与输入类控件底色 -->
+      <Color x:Key="SystemAccentColor">#FF83C3FF</Color>
+      <Color x:Key="SystemAccentColorDark1">#FF5FA9EF</Color>
+      <Color x:Key="SystemAccentColorDark2">#FF4390DB</Color>
+      <Color x:Key="SystemAccentColorDark3">#FF2F79C4</Color>
+      <Color x:Key="SystemAccentColorLight1">#FF9CCFFF</Color>
+      <Color x:Key="SystemAccentColorLight2">#FFB5DBFF</Color>
+      <Color x:Key="SystemAccentColorLight3">#FFCEE7FF</Color>
+      <SolidColorBrush x:Key="TextControlBackground" Color="{StaticResource AppInputColor}" />
+      <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#33000000" />
+      <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#40000000" />
+      <SolidColorBrush x:Key="TextControlBorderBrush" Color="{StaticResource AppBorderColor}" />
+      <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#26FFFFFF" />
+      <SolidColorBrush x:Key="ComboBoxBackground" Color="{StaticResource AppInputColor}" />
+      <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="#33000000" />
+      <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="{StaticResource AppBorderColor}" />
+      <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#26FFFFFF" />
+      <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="{StaticResource AppPopoverColor}" />
+    </ResourceDictionary>
+
+    <ResourceDictionary x:Key="Light">
+      <Color x:Key="AppBackgroundColor">#FFFFFFFF</Color>
+      <Color x:Key="AppForegroundColor">#FF1A1C1F</Color>
+      <Color x:Key="AppCardColor">#0D1A1C1F</Color>
+      <Color x:Key="AppPopoverColor">#FFFFFFFF</Color>
+      <Color x:Key="AppPrimaryColor">#FF339CFF</Color>
+      <Color x:Key="AppPrimaryForegroundColor">#FFFFFFFF</Color>
+      <Color x:Key="AppMutedForegroundColor">#7E1A1C1F</Color>
+      <Color x:Key="AppAccentColor">#FFE5F2FF</Color>
+      <Color x:Key="AppDestructiveColor">#FFE25507</Color>
+      <Color x:Key="AppBorderColor">#141A1C1F</Color>
+      <Color x:Key="AppInputColor">#141A1C1F</Color>
+      <Color x:Key="AppHoverColor">#0F1A1C1F</Color>
+      <Color x:Key="AppNavSelectedColor">#2E339CFF</Color>
+      <Color x:Key="AppGlassTintColor">#FFF4F6FA</Color>
+      <Color x:Key="AppGlassFallbackColor">#F2F4F6FA</Color>
+
+      <SolidColorBrush x:Key="AppBackgroundBrush" Color="{StaticResource AppBackgroundColor}" />
+      <SolidColorBrush x:Key="AppForegroundBrush" Color="{StaticResource AppForegroundColor}" />
+      <SolidColorBrush x:Key="AppCardBrush" Color="{StaticResource AppCardColor}" />
+      <SolidColorBrush x:Key="AppPopoverBrush" Color="{StaticResource AppPopoverColor}" />
+      <SolidColorBrush x:Key="AppPrimaryBrush" Color="{StaticResource AppPrimaryColor}" />
+      <SolidColorBrush x:Key="AppPrimaryForegroundBrush" Color="{StaticResource AppPrimaryForegroundColor}" />
+      <SolidColorBrush x:Key="AppMutedForegroundBrush" Color="{StaticResource AppMutedForegroundColor}" />
+      <SolidColorBrush x:Key="AppAccentBrush" Color="{StaticResource AppAccentColor}" />
+      <SolidColorBrush x:Key="AppDestructiveBrush" Color="{StaticResource AppDestructiveColor}" />
+      <SolidColorBrush x:Key="AppBorderBrush" Color="{StaticResource AppBorderColor}" />
+      <SolidColorBrush x:Key="AppInputBrush" Color="{StaticResource AppInputColor}" />
+      <SolidColorBrush x:Key="AppHoverBrush" Color="{StaticResource AppHoverColor}" />
+      <SolidColorBrush x:Key="AppNavSelectedBrush" Color="{StaticResource AppNavSelectedColor}" />
+
+      <Color x:Key="SystemAccentColor">#FF339CFF</Color>
+      <Color x:Key="SystemAccentColorDark1">#FF2286E4</Color>
+      <Color x:Key="SystemAccentColorDark2">#FF1571C8</Color>
+      <Color x:Key="SystemAccentColorDark3">#FF0C5DAB</Color>
+      <Color x:Key="SystemAccentColorLight1">#FF57ADFF</Color>
+      <Color x:Key="SystemAccentColorLight2">#FF7CBEFF</Color>
+      <Color x:Key="SystemAccentColorLight3">#FFA1CFFF</Color>
+      <SolidColorBrush x:Key="TextControlBackground" Color="#0A1A1C1F" />
+      <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#121A1C1F" />
+      <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#FFFFFFFF" />
+      <SolidColorBrush x:Key="TextControlBorderBrush" Color="{StaticResource AppBorderColor}" />
+      <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#241A1C1F" />
+      <SolidColorBrush x:Key="ComboBoxBackground" Color="#0A1A1C1F" />
+      <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="#121A1C1F" />
+      <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="{StaticResource AppBorderColor}" />
+      <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#241A1C1F" />
+      <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="{StaticResource AppPopoverColor}" />
+    </ResourceDictionary>
+
+  </ResourceDictionary.ThemeDictionaries>
+
+  <!-- 与主题无关的形状令牌 -->
+  <CornerRadius x:Key="ControlCornerRadius">8</CornerRadius>
+  <CornerRadius x:Key="OverlayCornerRadius">12</CornerRadius>
+  <CornerRadius x:Key="AppCardCornerRadius">12</CornerRadius>
+  <CornerRadius x:Key="AppShellCornerRadius">22</CornerRadius>
+  <CornerRadius x:Key="AppDetailCornerRadius">16</CornerRadius>
+</ResourceDictionary>

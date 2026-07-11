@@ -8,51 +8,65 @@
   <Design.DataContext>
     <vm:ResourceManagerViewModel />
   </Design.DataContext>
-  <DockPanel Margin="16,8,16,24">
-    <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,8" DockPanel.Dock="Top">
-      <Button Command="{Binding LoadCommand}">刷新</Button>
-      <TextBlock Text="{Binding LoadMessage}" Foreground="Red" VerticalAlignment="Center"></TextBlock>
-      <ProgressBar IsVisible="{Binding Loading}" IsIndeterminate="True" VerticalAlignment="Center" Height="30"></ProgressBar>
-    </StackPanel>
-    <TextBlock DockPanel.Dock="Bottom" Margin="0,8" TextWrapping="Wrap">请在 https://github.com/jxlpzqc/TMSpeechCommunity 贡献模型和插件。</TextBlock>
-    <ListBox ItemsSource="{Binding Items, Mode=OneWay}">
-      <ListBox.ItemTemplate>
-        <DataTemplate>
-          <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
-            <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding ResouceInfo.Name}"></TextBlock>
-            <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding ResouceInfo.Desc}"></TextBlock>
+  <DockPanel>
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,12,*" Margin="0,0,0,12">
+      <Button Grid.Column="0" Command="{Binding LoadCommand}">刷新</Button>
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+        <ProgressBar IsVisible="{Binding Loading}" IsIndeterminate="True" Width="140" />
+        <TextBlock Text="{Binding LoadMessage}"
+                   Foreground="{DynamicResource AppDestructiveBrush}"
+                   VerticalAlignment="Center" TextWrapping="Wrap" />
+      </StackPanel>
+    </Grid>
+    <TextBlock DockPanel.Dock="Bottom" Classes="Small Muted" Margin="0,10,0,16" TextWrapping="Wrap"
+               Text="请在 https://github.com/jxlpzqc/TMSpeechCommunity 贡献模型和插件。" />
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <ItemsControl ItemsSource="{Binding Items, Mode=OneWay}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Border Classes="Card" Margin="0,0,0,10" Padding="16,14">
+              <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                <StackPanel Grid.Row="0" Grid.Column="0" Spacing="3" Margin="0,0,16,0"
+                            VerticalAlignment="Center">
+                  <TextBlock Text="{Binding ResouceInfo.Name}" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding ResouceInfo.Desc}" Classes="Small Muted" TextWrapping="Wrap" />
+                </StackPanel>
 
-            <TextBlock Grid.Row="0" Grid.Column="1" IsVisible="{Binding IsInstalled}" HorizontalAlignment="Right"
-                       FontStyle="Italic">
-              已安装
-            </TextBlock>
-            <StackPanel Margin="0,0,-4,0" Grid.Row="1" Grid.Column="1" Orientation="Horizontal"
-                        HorizontalAlignment="Right">
-              <Button IsVisible="{Binding IsInstallButtonShown}" Command="{Binding InstallCommand}"
-                      Content="{Binding InstallButtonText}" />
-              <Button IsVisible="{Binding IsPauseButtonShown}" Command="{Binding PauseCommand}">暂停</Button>
-              <Button IsVisible="{Binding IsUninstallButtonShown}" Command="{Binding UninstallCommand}">移除</Button>
-            </StackPanel>
+                <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="8"
+                            VerticalAlignment="Center">
+                  <Border IsVisible="{Binding IsInstalled}" CornerRadius="999"
+                          Background="{DynamicResource AppAccentBrush}"
+                          Padding="10,4" VerticalAlignment="Center">
+                    <TextBlock Text="已安装" Classes="Small"
+                               Foreground="{DynamicResource AppPrimaryBrush}" />
+                  </Border>
+                  <Button Classes="Primary" IsVisible="{Binding IsInstallButtonShown}"
+                          Command="{Binding InstallCommand}"
+                          Content="{Binding InstallButtonText}" />
+                  <Button IsVisible="{Binding IsPauseButtonShown}" Command="{Binding PauseCommand}">暂停</Button>
+                  <Button IsVisible="{Binding IsUninstallButtonShown}" Command="{Binding UninstallCommand}">移除</Button>
+                </StackPanel>
 
-            <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" IsVisible="{Binding IsProgressShown}">
-              <ProgressBar
-                Maximum="100"
-                Value="{Binding Progress}" IsIndeterminate="{Binding IsIndeterminate}">
-              </ProgressBar>
-
-              <Grid IsVisible="{Binding !IsIndeterminate}" Margin="0,4">
-                <TextBlock Text="{Binding Speed}" HorizontalAlignment="Left"></TextBlock>
-                <TextBlock Text="{Binding Progress, StringFormat={}{0}%}" HorizontalAlignment="Right"></TextBlock>
+                <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                            IsVisible="{Binding IsProgressShown}" Margin="0,12,0,0" Spacing="6">
+                  <ProgressBar Maximum="100"
+                               Value="{Binding Progress}"
+                               IsIndeterminate="{Binding IsIndeterminate}" />
+                  <Grid IsVisible="{Binding !IsIndeterminate}">
+                    <TextBlock Text="{Binding Speed}" Classes="Small Muted" HorizontalAlignment="Left" />
+                    <TextBlock Text="{Binding Progress, StringFormat={}{0}%}" Classes="Small Muted"
+                               HorizontalAlignment="Right" />
+                  </Grid>
+                  <TextBlock IsVisible="{Binding IsFailed}"
+                             Foreground="{DynamicResource AppDestructiveBrush}"
+                             Classes="Small" TextWrapping="Wrap"
+                             Text="{Binding FailReason}" />
+                </StackPanel>
               </Grid>
-
-              <TextBlock IsVisible="{Binding IsFailed}" Foreground="Red"
-                         Text="{Binding FailReason}">
-              </TextBlock>
-
-            </StackPanel>
-          </Grid>
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
   </DockPanel>
 </UserControl>

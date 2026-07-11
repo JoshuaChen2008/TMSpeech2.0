@@ -6,304 +6,610 @@
         xmlns:vm="clr-namespace:TMSpeech.GUI.ViewModels"
         xmlns:views="using:TMSpeech.GUI.Views"
         xmlns:converter="clr-namespace:TMSpeech.GUI.Converters"
-        mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="450"
-        Width="720"
+        mc:Ignorable="d" d:DesignWidth="940" d:DesignHeight="620"
+        Width="940"
+        Height="620"
+        MinWidth="820"
+        MinHeight="520"
+        Background="Transparent"
+        TransparencyLevelHint="AcrylicBlur"
+        SystemDecorations="None"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="-1"
         Icon="/Assets/tmspeech.ico"
         x:Class="TMSpeech.GUI.Views.ConfigWindow"
         x:Name="winConfig"
-        Title="配置"
+        Title="设置"
+        Foreground="{DynamicResource AppForegroundBrush}"
         FontFamily="{StaticResource GlobalFontFamily}">
   <Design.DataContext>
     <vm:ConfigViewModel />
   </Design.DataContext>
   <Window.Resources>
-    <converter:IntToColorConverter x:Key="IntToColorConverter"></converter:IntToColorConverter>
+    <converter:IntToColorConverter x:Key="IntToColorConverter" />
+    <converter:IntEqualsConverter x:Key="IntEqualsConverter" />
+    <converter:UIntToBrushConverter x:Key="UIntToBrushConverter" />
+    <converter:IntToTextAlignmentConverter x:Key="IntToTextAlignmentConverter" />
   </Window.Resources>
-  <DockPanel>
-    <TextBlock IsVisible="{Binding !IsNotRunning}" DockPanel.Dock="Bottom" FontStyle="Italic" Margin="20">
-      * 当前工作正在运行，部分配置可能无法更改。
-    </TextBlock>
-    <TabControl TabStripPlacement="Left" SelectedIndex="{Binding CurrentTab}">
-      <TabControl.Styles>
-        <Style Selector="Label,TextBox,ComboBox,Button,CheckBox,NumericUpDown">
-          <Setter Property="Margin" Value="5" />
-          <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
-        <Style Selector="ComboBox">
-          <Setter Property="HorizontalAlignment" Value="Stretch" />
-        </Style>
+  <Window.Styles>
+    <!-- 设置页通用行内控件 -->
+    <Style Selector="ScrollViewer.Pane">
+      <Setter Property="Padding" Value="28,8,28,24" />
+    </Style>
+    <Style Selector="ColorPicker">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="MinHeight" Value="34" />
+    </Style>
+    <Style Selector="ComboBox">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="NumericUpDown">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+  </Window.Styles>
 
-        <Style Selector="TabItem controls|AutoGrid">
-          <Setter Property="Margin" Value="16" />
-        </Style>
-      </TabControl.Styles>
+  <!-- ===== 毛玻璃外壳 ===== -->
+  <Border CornerRadius="{DynamicResource AppShellCornerRadius}"
+          Margin="1"
+          BorderThickness="1"
+          BorderBrush="{DynamicResource AppBorderBrush}"
+          ClipToBounds="True">
+    <Panel>
+      <ExperimentalAcrylicBorder IsHitTestVisible="False">
+        <ExperimentalAcrylicBorder.Material>
+          <ExperimentalAcrylicMaterial BackgroundSource="Digger"
+                                       TintColor="{DynamicResource AppGlassTintColor}"
+                                       TintOpacity="0.62"
+                                       MaterialOpacity="0.55"
+                                       FallbackColor="{DynamicResource AppGlassFallbackColor}" />
+        </ExperimentalAcrylicBorder.Material>
+      </ExperimentalAcrylicBorder>
 
-      <TabItem>
-        <TabItem.Header>
-          <StackPanel Orientation="Horizontal">
-            <TextBlock>通用</TextBlock>
+      <!-- 拖拽层：所有未被控件消费的毛玻璃区域（侧栏空白、边缘间隙）都可拖动窗口 -->
+      <Border Background="Transparent"
+              PointerPressed="TitleBar_OnPointerPressed"
+              DoubleTapped="TitleBar_OnDoubleTapped" />
+
+      <Grid ColumnDefinitions="212,*" Margin="8">
+
+        <!-- ===== 侧栏（置于玻璃上） ===== -->
+        <DockPanel Grid.Column="0" Margin="10,12,10,12">
+          <!-- 品牌区（可拖动窗口） -->
+          <Border DockPanel.Dock="Top"
+                  Background="Transparent"
+                  PointerPressed="TitleBar_OnPointerPressed"
+                  DoubleTapped="TitleBar_OnDoubleTapped"
+                  Padding="6,2,6,18">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <Border Width="34" Height="34" CornerRadius="17"
+                      Background="{DynamicResource AppPrimaryBrush}">
+                <Image Source="/Assets/tmspeech.ico" Width="22" Height="22"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+              <StackPanel VerticalAlignment="Center" Spacing="1">
+                <TextBlock Text="TMSpeech" FontWeight="SemiBold" />
+                <TextBlock Text="设置中心" Classes="Small Muted" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <!-- 底部提示 -->
+          <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8"
+                      Margin="8,16,8,4">
+            <TextBlock Classes="NavIcon Muted" FontSize="14">&#xE771;</TextBlock>
+            <TextBlock Classes="Small Muted" VerticalAlignment="Center">界面跟随系统主题</TextBlock>
           </StackPanel>
-        </TabItem.Header>
-        <StackPanel>
-          <controls:AutoGrid RowCount="100" ColumnDefinitions="115,*" DataContext="{Binding GeneralSectionConfig}">
-            <Label IsVisible="False">语言</Label>
-            <ComboBox IsVisible="False" SelectedValueBinding="{Binding Key}" SelectedValue="{Binding  Language,Mode=TwoWay}"
-                      Name="comboLanguage" ItemsSource="{Binding LanguagesAvailable}">
-              <ComboBox.ItemTemplate>
-                <DataTemplate>
-                  <TextBlock Text="{Binding Value}"></TextBlock>
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
-            <!--
-            <Label>用户数据目录</Label>
-            <controls:FilePicker Text="{Binding UserDir,Mode=TwoWay}" ExtendedOptions="True" Type="Folder" />
-             -->
-            <Label IsVisible="False">开机启动</Label>
-            <CheckBox IsVisible="False" IsChecked="{Binding LaunchOnStartup,Mode=TwoWay}" />
-            <Label>启动开始识别</Label>
-            <CheckBox IsChecked="{Binding StartOnLaunch,Mode=TwoWay}" />
-            <Label>识别日志文件夹</Label>
-            <TextBox Text="{Binding ResultLogPath,Mode=TwoWay}"></TextBox>
-            <Label IsVisible="False">自动更新</Label>
-            <CheckBox IsVisible="False" IsChecked="{Binding AutoUpdate,Mode=TwoWay}" />
-          </controls:AutoGrid>
 
-          <StackPanel DataContext="{Binding LockSectionConfig}" Margin="16,8,16,0">
-            <TextBlock FontWeight="Bold" Margin="5,0,0,4">锁定字幕后的悬浮按钮</TextBlock>
-            <TextBlock Foreground="Gray" FontSize="12" Margin="5,0,0,4" TextWrapping="Wrap">
-              锁定后字幕窗口鼠标穿透，以下勾选的按钮会以悬浮小条显示在字幕右上角，无需解锁即可操作。
-            </TextBlock>
-            <controls:AutoGrid RowCount="100" ColumnDefinitions="115,*" Margin="0">
-              <Label>显示悬浮按钮</Label>
-              <CheckBox IsChecked="{Binding ShowControlBar,Mode=TwoWay}" />
-            </controls:AutoGrid>
-            <controls:AutoGrid RowCount="100" ColumnDefinitions="115,*" Margin="0" IsEnabled="{Binding ShowControlBar}">
-              <Label>解锁字幕</Label>
-              <CheckBox IsChecked="{Binding ShowUnlock,Mode=TwoWay}" />
-              <Label>开始 / 停止识别</Label>
-              <CheckBox IsChecked="{Binding ShowPlayStop,Mode=TwoWay}" />
-              <Label>重启识别</Label>
-              <CheckBox IsChecked="{Binding ShowRestart,Mode=TwoWay}" />
-              <Label>退出程序</Label>
-              <CheckBox IsChecked="{Binding ShowExit,Mode=TwoWay}" />
-            </controls:AutoGrid>
+          <!-- 导航 -->
+          <StackPanel Spacing="4">
+            <RadioButton Classes="Nav" GroupName="nav"
+                         IsChecked="{Binding CurrentTab, Converter={StaticResource IntEqualsConverter}, ConverterParameter=0, Mode=TwoWay}">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Classes="NavIcon">&#xE713;</TextBlock>
+                <TextBlock VerticalAlignment="Center">通用</TextBlock>
+              </StackPanel>
+            </RadioButton>
+            <RadioButton Classes="Nav" GroupName="nav"
+                         IsChecked="{Binding CurrentTab, Converter={StaticResource IntEqualsConverter}, ConverterParameter=1, Mode=TwoWay}">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Classes="NavIcon">&#xEA8F;</TextBlock>
+                <TextBlock VerticalAlignment="Center">通知</TextBlock>
+              </StackPanel>
+            </RadioButton>
+            <RadioButton Classes="Nav" GroupName="nav"
+                         IsChecked="{Binding CurrentTab, Converter={StaticResource IntEqualsConverter}, ConverterParameter=2, Mode=TwoWay}">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Classes="NavIcon">&#xE7F4;</TextBlock>
+                <TextBlock VerticalAlignment="Center">显示与字幕</TextBlock>
+              </StackPanel>
+            </RadioButton>
+            <RadioButton Classes="Nav" GroupName="nav"
+                         IsChecked="{Binding CurrentTab, Converter={StaticResource IntEqualsConverter}, ConverterParameter=3, Mode=TwoWay}">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Classes="NavIcon">&#xE720;</TextBlock>
+                <TextBlock VerticalAlignment="Center">音频源</TextBlock>
+              </StackPanel>
+            </RadioButton>
+            <RadioButton Classes="Nav" GroupName="nav"
+                         IsChecked="{Binding CurrentTab, Converter={StaticResource IntEqualsConverter}, ConverterParameter=4, Mode=TwoWay}">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Classes="NavIcon">&#xE8C1;</TextBlock>
+                <TextBlock VerticalAlignment="Center">语音识别</TextBlock>
+              </StackPanel>
+            </RadioButton>
+            <RadioButton Classes="Nav" GroupName="nav"
+                         IsChecked="{Binding CurrentTab, Converter={StaticResource IntEqualsConverter}, ConverterParameter=5, Mode=TwoWay}">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Classes="NavIcon">&#xE7B8;</TextBlock>
+                <TextBlock VerticalAlignment="Center">资源管理</TextBlock>
+              </StackPanel>
+            </RadioButton>
+
+            <Border Classes="Separator" Margin="8,8" />
+
+            <RadioButton Classes="Nav" GroupName="nav"
+                         IsChecked="{Binding CurrentTab, Converter={StaticResource IntEqualsConverter}, ConverterParameter=6, Mode=TwoWay}">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Classes="NavIcon">&#xE946;</TextBlock>
+                <TextBlock VerticalAlignment="Center">关于</TextBlock>
+              </StackPanel>
+            </RadioButton>
           </StackPanel>
-        </StackPanel>
+        </DockPanel>
 
-      </TabItem>
-      <TabItem>
-        <TabItem.Header>
-          <StackPanel Orientation="Horizontal">
-            <TextBlock>显示</TextBlock>
-          </StackPanel>
-        </TabItem.Header>
-        <controls:AutoGrid RowCount="100" ColumnDefinitions="100,*,100,*"
-                           DataContext="{Binding AppearanceSectionConfig}">
-          <Grid.Styles>
-            <Style Selector="ColorPicker">
-              <Setter Property="Width" Value="{Binding #comboAlign.Bounds.Width}"></Setter>
-            </Style>
-          </Grid.Styles>
-          <Label>阴影颜色</Label>
-          <ColorPicker Color="{Binding ShadowColor, Converter={StaticResource IntToColorConverter}}" />
-
-          <Label>阴影大小</Label>
-          <NumericUpDown Value="{Binding ShadowSize}" />
-
-          <Label>字体</Label>
-          <ComboBox
-            SelectedValueBinding="{Binding Name}"
-            SelectedValue="{Binding FontFamily}" SelectedIndex="0" ItemsSource="{Binding FontsAvailable}">
-            <ComboBox.ItemTemplate>
-              <DataTemplate>
-                <TextBlock Text="{Binding Name}" FontFamily="{Binding}" />
-              </DataTemplate>
-            </ComboBox.ItemTemplate>
-          </ComboBox>
-
-          <Label>字体大小</Label>
-          <NumericUpDown Value="{Binding FontSize}" />
-
-          <Label>字体颜色</Label>
-          <ColorPicker Color="{Binding FontColor, Converter={StaticResource IntToColorConverter}}" />
-
-          <Label>鼠标悬停背景</Label>
-          <ColorPicker Color="{Binding MouseHover, Converter={StaticResource IntToColorConverter}}" />
-          
-          <Label>背景颜色</Label>
-          <ColorPicker Color="{Binding BackgroundColor, Converter={StaticResource IntToColorConverter}}" />
-
-          <Label>文字对齐</Label>
-          <ComboBox
-            Name="comboAlign"
-            SelectedValueBinding="{Binding Key}"
-            SelectedValue="{Binding TextAlign}"
-            ItemsSource="{Binding TextAligns}">
-            <ComboBox.ItemTemplate>
-              <DataTemplate>
-                <TextBlock Text="{Binding Value}"></TextBlock>
-              </DataTemplate>
-            </ComboBox.ItemTemplate>
-          </ComboBox>
-        </controls:AutoGrid>
-      </TabItem>
-
-      <TabItem>
-        <TabItem.Header>
-          <StackPanel Orientation="Horizontal">
-            <TextBlock>通知</TextBlock>
-          </StackPanel>
-        </TabItem.Header>
-        <StackPanel DataContext="{Binding NotificationConfig}">
-          <controls:AutoGrid RowCount="100" ColumnDefinitions="100,*">
-            <Label>通知类型</Label>
-            <ComboBox
-              SelectedValueBinding="{Binding Key}"
-              SelectedValue="{Binding NotificationType}"
-              ItemsSource="{Binding NotificaitonTypes}">
-              <ComboBox.ItemTemplate>
-                <DataTemplate>
-                  <TextBlock Text="{Binding Value}"></TextBlock>
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
-
-            <Label Grid.ColumnSpan="2">敏感词（使用逗号或换行分割）</Label>
-            <TextBox IsEnabled="{Binding #winConfig.ViewModel.IsNotRunning}" Height="100" TextWrapping="Wrap"
-                     AcceptsReturn="True"
-                     AcceptsTab="True" Text="{Binding SensitiveWords}"
-                     MaxLines="8" Grid.ColumnSpan="2">
-            </TextBox>
-
-          </controls:AutoGrid>
-        </StackPanel>
-      </TabItem>
-
-      <TabItem>
-        <TabItem.Header>
-          <StackPanel Orientation="Horizontal">
-            <TextBlock>音频源</TextBlock>
-          </StackPanel>
-        </TabItem.Header>
-        <StackPanel IsEnabled="{Binding #winConfig.ViewModel.IsNotRunning}" DataContext="{Binding AudioSectionConfig}">
-          <controls:AutoGrid RowCount="100" ColumnDefinitions="100,*">
-            <Label>音频源</Label>
-            <DockPanel>
-              <Button DockPanel.Dock="Right">刷新</Button>
-              <ComboBox ItemsSource="{Binding AudioSourcesAvailable}"
-                        SelectedValue="{Binding AudioSource}"
-                        SelectedValueBinding="{Binding Key}">
-                <ComboBox.Styles>
-                  <Style Selector="ComboBox /template/ ContentControl#ContentPresenter TextBlock.OnlyInPopup">
-                    <Setter Property="IsVisible" Value="False"></Setter>
-                  </Style>
-                </ComboBox.Styles>
-                <ComboBox.ItemTemplate>
-                  <DataTemplate>
-                    <StackPanel>
-                      <TextBlock Text="{Binding Value.Name}"></TextBlock>
-                      <TextBlock Text="{Binding Value.Description}" Classes="OnlyInPopup"></TextBlock>
-                    </StackPanel>
-                  </DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
-            </DockPanel>
-          </controls:AutoGrid>
-          <controls:PluginConfigView ConfigEditor="{Binding ConfigEditor}"
-                                     Value="{Binding PluginConfig, Mode=TwoWay}" />
-        </StackPanel>
-      </TabItem>
-      <TabItem>
-        <TabItem.Header>
-          <StackPanel Orientation="Horizontal">
-            <TextBlock>语音识别</TextBlock>
-          </StackPanel>
-        </TabItem.Header>
-        <StackPanel DataContext="{Binding RecognizeSectionConfig}"
-                    IsEnabled="{Binding #winConfig.ViewModel.IsNotRunning}">
-          <controls:AutoGrid RowCount="100" ColumnDefinitions="100,*">
-            <Label>语音识别器</Label>
-            <DockPanel>
-              <Button DockPanel.Dock="Right">刷新</Button>
-              <ComboBox ItemsSource="{Binding RecognizersAvailable}"
-                        SelectedValue="{Binding Recognizer}"
-                        SelectedValueBinding="{Binding Key}">
-                <ComboBox.Styles>
-                  <Style Selector="ComboBox /template/ ContentControl#ContentPresenter TextBlock.OnlyInPopup">
-                    <Setter Property="IsVisible" Value="False"></Setter>
-                  </Style>
-                </ComboBox.Styles>
-                <ComboBox.ItemTemplate>
-                  <DataTemplate>
-                    <StackPanel>
-                      <TextBlock Text="{Binding Value.Name}"></TextBlock>
-                      <TextBlock Text="{Binding Value.Description}" Classes="OnlyInPopup"></TextBlock>
-                    </StackPanel>
-                  </DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
-            </DockPanel>
-          </controls:AutoGrid>
-
-          <controls:PluginConfigView ConfigEditor="{Binding ConfigEditor}"
-                                     Value="{Binding PluginConfig, Mode=TwoWay}" />
-        </StackPanel>
-      </TabItem>
-      <TabItem Header="插件" IsVisible="False"></TabItem>
-      <TabItem Header="资源">
-        <views:ResourceManagerView />
-      </TabItem>
-
-      <TabItem Header="关于">
-        <ScrollViewer>
-          <ScrollViewer.Resources>
-            <ResourceDictionary>
-              <ResourceDictionary.MergedDictionaries>
-                <ResourceInclude Source="../ImageResources.axaml"></ResourceInclude>
-              </ResourceDictionary.MergedDictionaries>
-            </ResourceDictionary>
-
-
-          </ScrollViewer.Resources>
-
-          <StackPanel Margin="24">
-            <Border Margin="0,0,0,24" Background="#FF005F2D" CornerRadius="24" ClipToBounds="True">
-              <Image MaxWidth="400" Source="{StaticResource tmspeech_banner}" />
+        <!-- ===== 实色内容卡 ===== -->
+        <Border Grid.Column="1"
+                CornerRadius="{DynamicResource AppDetailCornerRadius}"
+                Background="{DynamicResource AppBackgroundBrush}"
+                BorderBrush="{DynamicResource AppBorderBrush}"
+                BorderThickness="1"
+                ClipToBounds="True">
+          <DockPanel>
+            <!-- 顶栏：标题 / 自动保存徽标 / 窗口控制 -->
+            <Border DockPanel.Dock="Top" Padding="20,8,10,8"
+                    BorderBrush="{DynamicResource AppBorderBrush}"
+                    BorderThickness="0,0,0,1">
+              <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                <TextBlock Grid.Column="0" Text="设置" Classes="Small"
+                           VerticalAlignment="Center" />
+                <Border Grid.Column="1" Background="Transparent"
+                        PointerPressed="TitleBar_OnPointerPressed"
+                        DoubleTapped="TitleBar_OnDoubleTapped" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="7"
+                            VerticalAlignment="Center" Margin="0,0,10,0">
+                  <TextBlock Classes="NavIcon Muted" FontSize="14">&#xE753;</TextBlock>
+                  <TextBlock Classes="Small Muted" VerticalAlignment="Center">所有更改已自动保存</TextBlock>
+                </StackPanel>
+                <StackPanel Grid.Column="3" Orientation="Horizontal">
+                  <ToggleButton Classes="WindowButton"
+                                IsChecked="{Binding Topmost, ElementName=winConfig, Mode=TwoWay}"
+                                ToolTip.Tip="窗口置顶：普通窗口 / 保持在最上方">&#xE718;</ToggleButton>
+                  <Button Classes="WindowButton" Click="MinimizeButton_OnClick" ToolTip.Tip="最小化">&#xE921;</Button>
+                  <Button Classes="WindowButton" Click="MaximizeButton_OnClick" ToolTip.Tip="最大化或还原">&#xE922;</Button>
+                  <Button Classes="WindowButton WindowClose" Click="CloseButton_OnClick" ToolTip.Tip="关闭">&#xE8BB;</Button>
+                </StackPanel>
+              </Grid>
             </Border>
 
-            <TextBlock TextWrapping="Wrap">
-              <Run FontSize="24">TMSpeech</Run>
-              <LineBreak />
-              <Run>版本：</Run>
-              <Run Name="runVersion"></Run>
-              <LineBreak />
-              <Run>内部版本：</Run>
-              <Run Name="runInternalVersion"></Run>
-              <LineBreak />
-            </TextBlock>
+            <!-- 运行中提示 -->
+            <Border DockPanel.Dock="Bottom" IsVisible="{Binding !IsNotRunning}"
+                    Margin="20,0,20,14" Padding="12,8" CornerRadius="8"
+                    Background="{DynamicResource AppAccentBrush}">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Classes="NavIcon" FontSize="13"
+                           Foreground="{DynamicResource AppPrimaryBrush}">&#xE946;</TextBlock>
+                <TextBlock Classes="Small" VerticalAlignment="Center"
+                           Text="识别正在运行，部分配置暂时无法更改。" />
+              </StackPanel>
+            </Border>
 
-            <Button Margin="0,0,0,24" IsVisible="False">检查更新</Button>
+            <!-- ===== 页面区 ===== -->
+            <Panel>
 
-            <TextBlock xml:space="preserve">A simple tool for recognize system audio.
+              <!-- 0 通用 -->
+              <ScrollViewer Classes="Pane"
+                            IsVisible="{Binding CurrentTab, Converter={StaticResource IntEqualsConverter}, ConverterParameter=0}">
+                <StackPanel Spacing="20">
+                  <StackPanel Spacing="4" Margin="0,10,0,0">
+                    <TextBlock Classes="PageTitle" Text="通用" />
+                    <TextBlock Classes="Small Muted" Text="管理启动行为、日志与字幕锁定后的快捷操作。" />
+                  </StackPanel>
 
-This tool is made possible by the following open source projects:
+                  <StackPanel Spacing="6" DataContext="{Binding GeneralSectionConfig}">
+                    <TextBlock Classes="SectionTitle" Text="功能设置" />
+                    <Border Classes="Separator" />
+                    <Grid ColumnDefinitions="*,36,*" RowDefinitions="Auto,Auto" Margin="0,10,0,0">
+                      <StackPanel Grid.Row="0" Grid.Column="0" Spacing="8" Margin="0,0,0,20">
+                        <TextBlock Text="启动后开始识别" />
+                        <TextBlock Classes="Small Muted" Text="打开应用时自动使用上次的音频源。" TextWrapping="Wrap" />
+                        <ToggleSwitch IsChecked="{Binding StartOnLaunch, Mode=TwoWay}"
+                                      OnContent="已开启" OffContent="已关闭" />
+                      </StackPanel>
+                      <StackPanel Grid.Row="0" Grid.Column="2" Spacing="8" Margin="0,0,0,20">
+                        <TextBlock Text="识别日志文件夹" />
+                        <TextBlock Classes="Small Muted" Text="保存字幕记录和诊断日志。" TextWrapping="Wrap" />
+                        <TextBox Text="{Binding ResultLogPath, Mode=TwoWay}" />
+                      </StackPanel>
+                    </Grid>
+                  </StackPanel>
 
-sherpa-onnx: Real-time speech recognition
-Reference: https://k2-fsa.github.io/sherpa/
+                  <StackPanel Spacing="6" DataContext="{Binding LockSectionConfig}">
+                    <TextBlock Classes="SectionTitle" Text="锁定字幕后的悬浮工具栏" />
+                    <Border Classes="Separator" />
+                    <TextBlock Classes="Small Muted" Margin="0,8,0,0" TextWrapping="Wrap"
+                               Text="锁定后字幕窗口鼠标穿透，勾选的按钮会以悬浮小条显示在字幕右上角，无需解锁即可操作。" />
+                    <StackPanel Spacing="8" Margin="0,10,0,0">
+                      <TextBlock Text="显示悬浮工具栏" />
+                      <ToggleSwitch IsChecked="{Binding ShowControlBar, Mode=TwoWay}"
+                                    OnContent="已开启" OffContent="已关闭" />
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,36,*" RowDefinitions="Auto,Auto" Margin="0,14,0,0"
+                          IsEnabled="{Binding ShowControlBar}">
+                      <StackPanel Grid.Row="0" Grid.Column="0" Spacing="8" Margin="0,0,0,18">
+                        <TextBlock Text="解锁字幕" />
+                        <ToggleSwitch IsChecked="{Binding ShowUnlock, Mode=TwoWay}"
+                                      OnContent="显示" OffContent="隐藏" />
+                      </StackPanel>
+                      <StackPanel Grid.Row="0" Grid.Column="2" Spacing="8" Margin="0,0,0,18">
+                        <TextBlock Text="开始 / 停止识别" />
+                        <ToggleSwitch IsChecked="{Binding ShowPlayStop, Mode=TwoWay}"
+                                      OnContent="显示" OffContent="隐藏" />
+                      </StackPanel>
+                      <StackPanel Grid.Row="1" Grid.Column="0" Spacing="8">
+                        <TextBlock Text="重启识别" />
+                        <ToggleSwitch IsChecked="{Binding ShowRestart, Mode=TwoWay}"
+                                      OnContent="显示" OffContent="隐藏" />
+                      </StackPanel>
+                      <StackPanel Grid.Row="1" Grid.Column="2" Spacing="8">
+                        <TextBlock Text="退出程序" />
+                        <ToggleSwitch IsChecked="{Binding ShowExit, Mode=TwoWay}"
+                                      OnContent="显示" OffContent="隐藏" />
+                      </StackPanel>
+                    </Grid>
+                  </StackPanel>
+                </StackPanel>
+              </ScrollViewer>
 
-NAudio: an open source .NET audio library written by Mark Heath
-Reference: https://github.com/naudio/NAudio
-            </TextBlock>
+              <!-- 1 通知 -->
+              <ScrollViewer Classes="Pane"
+                            IsVisible="{Binding CurrentTab, Converter={StaticResource IntEqualsConverter}, ConverterParameter=1}">
+                <StackPanel Spacing="20" DataContext="{Binding NotificationConfig}">
+                  <StackPanel Spacing="4" Margin="0,10,0,0">
+                    <TextBlock Classes="PageTitle" Text="通知" />
+                    <TextBlock Classes="Small Muted" Text="设置状态变化和识别结果的提醒方式。" />
+                  </StackPanel>
 
-          </StackPanel>
-        </ScrollViewer>
+                  <StackPanel Spacing="6">
+                    <TextBlock Classes="SectionTitle" Text="功能设置" />
+                    <Border Classes="Separator" />
+                    <Grid Classes="SettingRow" ColumnDefinitions="*,240" Margin="0,12,0,0">
+                      <StackPanel Classes="Copy">
+                        <TextBlock Text="通知类型" />
+                        <TextBlock Classes="Small Muted" Text="选择主要提醒渠道。" />
+                      </StackPanel>
+                      <ComboBox Grid.Column="1" VerticalAlignment="Center"
+                                SelectedValueBinding="{Binding Key}"
+                                SelectedValue="{Binding NotificationType}"
+                                ItemsSource="{Binding NotificaitonTypes}">
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate>
+                            <TextBlock Text="{Binding Value}" />
+                          </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+                    </Grid>
+                    <Border Classes="Separator" Opacity="0.7" />
+                    <StackPanel Spacing="8" Margin="0,10,0,0">
+                      <TextBlock Text="敏感词" />
+                      <TextBlock Classes="Small Muted" Text="使用逗号或换行分割，识别到这些词时会发出提醒。" />
+                      <TextBox IsEnabled="{Binding #winConfig.ViewModel.IsNotRunning}"
+                               Height="120" TextWrapping="Wrap"
+                               AcceptsReturn="True" AcceptsTab="True"
+                               Text="{Binding SensitiveWords}"
+                               MaxLines="8" />
+                    </StackPanel>
+                  </StackPanel>
+                </StackPanel>
+              </ScrollViewer>
 
-      </TabItem>
+              <!-- 2 显示与字幕 -->
+              <ScrollViewer Classes="Pane"
+                            IsVisible="{Binding CurrentTab, Converter={StaticResource IntEqualsConverter}, ConverterParameter=2}">
+                <StackPanel Spacing="20" DataContext="{Binding AppearanceSectionConfig}">
+                  <StackPanel Spacing="4" Margin="0,10,0,0">
+                    <TextBlock Classes="PageTitle" Text="显示与字幕" />
+                    <TextBlock Classes="Small Muted" Text="调整字幕的排版、颜色与视觉效果。" />
+                  </StackPanel>
 
+                  <!-- 实时预览 -->
+                  <StackPanel Spacing="8">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Classes="NavIcon Muted" FontSize="14">&#xE7B3;</TextBlock>
+                      <TextBlock Classes="SectionTitle" Text="实时预览" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <Border CornerRadius="10" ClipToBounds="True" MinHeight="104"
+                            BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1">
+                      <Border.Background>
+                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                          <GradientStop Offset="0" Color="#FF2E3644" />
+                          <GradientStop Offset="1" Color="#FF141922" />
+                        </LinearGradientBrush>
+                      </Border.Background>
+                      <Border VerticalAlignment="Center" Margin="16" Padding="14,10" CornerRadius="6"
+                              Background="{Binding BackgroundColor, Converter={StaticResource UIntToBrushConverter}}">
+                        <TextBlock Text="欢迎使用 TMSpeech，这是一段字幕预览。"
+                                   FontWeight="Bold" TextWrapping="Wrap"
+                                   FontFamily="{Binding FontFamily}"
+                                   FontSize="{Binding FontSize}"
+                                   Foreground="{Binding FontColor, Converter={StaticResource UIntToBrushConverter}}"
+                                   TextAlignment="{Binding TextAlign, Converter={StaticResource IntToTextAlignmentConverter}}" />
+                      </Border>
+                    </Border>
+                  </StackPanel>
 
-    </TabControl>
+                  <Grid ColumnDefinitions="*,36,*">
+                    <!-- 字体与排版 -->
+                    <StackPanel Grid.Column="0" Spacing="6">
+                      <StackPanel Spacing="3">
+                        <TextBlock Classes="SectionTitle" Text="字体与排版" />
+                        <TextBlock Classes="Small Muted" Text="保持字幕清晰、稳定且易于阅读。" />
+                      </StackPanel>
+                      <Border Classes="Separator" />
+                      <StackPanel Spacing="10" Margin="0,10,0,0">
+                        <StackPanel Spacing="6">
+                          <TextBlock Text="字体" />
+                          <ComboBox SelectedValueBinding="{Binding Name}"
+                                    SelectedValue="{Binding FontFamily}" SelectedIndex="0"
+                                    ItemsSource="{Binding FontsAvailable}">
+                            <ComboBox.ItemTemplate>
+                              <DataTemplate>
+                                <TextBlock Text="{Binding Name}" FontFamily="{Binding}" />
+                              </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                          </ComboBox>
+                        </StackPanel>
+                        <StackPanel Spacing="6">
+                          <TextBlock Text="字体大小" />
+                          <NumericUpDown Value="{Binding FontSize}" Minimum="8" Maximum="200" Increment="1" />
+                        </StackPanel>
+                        <StackPanel Spacing="6">
+                          <TextBlock Text="文字对齐" />
+                          <ComboBox Name="comboAlign"
+                                    SelectedValueBinding="{Binding Key}"
+                                    SelectedValue="{Binding TextAlign}"
+                                    ItemsSource="{Binding TextAligns}">
+                            <ComboBox.ItemTemplate>
+                              <DataTemplate>
+                                <TextBlock Text="{Binding Value}" />
+                              </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                          </ComboBox>
+                        </StackPanel>
+                      </StackPanel>
+                    </StackPanel>
 
+                    <!-- 颜色与效果 -->
+                    <StackPanel Grid.Column="2" Spacing="6">
+                      <StackPanel Spacing="3">
+                        <TextBlock Classes="SectionTitle" Text="颜色与效果" />
+                        <TextBlock Classes="Small Muted" Text="实时预览不同背景下的可读性。" />
+                      </StackPanel>
+                      <Border Classes="Separator" />
+                      <StackPanel Spacing="10" Margin="0,10,0,0">
+                        <StackPanel Spacing="6">
+                          <TextBlock Text="字体颜色" />
+                          <ColorPicker Color="{Binding FontColor, Converter={StaticResource IntToColorConverter}}" />
+                        </StackPanel>
+                        <StackPanel Spacing="6">
+                          <TextBlock Text="背景颜色" />
+                          <ColorPicker Color="{Binding BackgroundColor, Converter={StaticResource IntToColorConverter}}" />
+                        </StackPanel>
+                        <StackPanel Spacing="6">
+                          <TextBlock Text="鼠标悬停背景" />
+                          <ColorPicker Color="{Binding MouseHover, Converter={StaticResource IntToColorConverter}}" />
+                        </StackPanel>
+                        <StackPanel Spacing="6">
+                          <TextBlock Text="阴影颜色" />
+                          <ColorPicker Color="{Binding ShadowColor, Converter={StaticResource IntToColorConverter}}" />
+                        </StackPanel>
+                        <StackPanel Spacing="6">
+                          <TextBlock Text="阴影大小" />
+                          <NumericUpDown Value="{Binding ShadowSize}" Minimum="0" Maximum="64" Increment="1" />
+                        </StackPanel>
+                      </StackPanel>
+                    </StackPanel>
+                  </Grid>
+                </StackPanel>
+              </ScrollViewer>
 
-  </DockPanel>
+              <!-- 3 音频源 -->
+              <ScrollViewer Classes="Pane"
+                            IsVisible="{Binding CurrentTab, Converter={StaticResource IntEqualsConverter}, ConverterParameter=3}">
+                <StackPanel Spacing="20" DataContext="{Binding AudioSectionConfig}"
+                            IsEnabled="{Binding #winConfig.ViewModel.IsNotRunning}">
+                  <StackPanel Spacing="4" Margin="0,10,0,0">
+                    <TextBlock Classes="PageTitle" Text="音频源" />
+                    <TextBlock Classes="Small Muted" Text="选择需要识别的系统声音或麦克风输入。" />
+                  </StackPanel>
+
+                  <StackPanel Spacing="6">
+                    <TextBlock Classes="SectionTitle" Text="来源选择" />
+                    <Border Classes="Separator" />
+                    <Grid Classes="SettingRow" ColumnDefinitions="*,300" Margin="0,12,0,0">
+                      <StackPanel Classes="Copy">
+                        <TextBlock Text="音频源" />
+                        <TextBlock Classes="Small Muted" Text="识别将从该来源采集音频。" />
+                      </StackPanel>
+                      <DockPanel Grid.Column="1" VerticalAlignment="Center">
+                        <Button DockPanel.Dock="Right" Margin="8,0,0,0"
+                                Command="{Binding RefreshCommand}">刷新</Button>
+                        <ComboBox ItemsSource="{Binding AudioSourcesAvailable}"
+                                  SelectedValue="{Binding AudioSource}"
+                                  SelectedValueBinding="{Binding Key}">
+                          <ComboBox.Styles>
+                            <Style Selector="ComboBox /template/ ContentControl#ContentPresenter TextBlock.OnlyInPopup">
+                              <Setter Property="IsVisible" Value="False" />
+                            </Style>
+                          </ComboBox.Styles>
+                          <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                              <StackPanel>
+                                <TextBlock Text="{Binding Value.Name}" />
+                                <TextBlock Text="{Binding Value.Description}" Classes="OnlyInPopup Small Muted" />
+                              </StackPanel>
+                            </DataTemplate>
+                          </ComboBox.ItemTemplate>
+                        </ComboBox>
+                      </DockPanel>
+                    </Grid>
+                  </StackPanel>
+
+                  <StackPanel Spacing="6">
+                    <TextBlock Classes="SectionTitle" Text="来源参数" />
+                    <Border Classes="Separator" />
+                    <controls:PluginConfigView Margin="0,10,0,0"
+                                               ConfigEditor="{Binding ConfigEditor}"
+                                               Value="{Binding PluginConfig, Mode=TwoWay}" />
+                  </StackPanel>
+                </StackPanel>
+              </ScrollViewer>
+
+              <!-- 4 语音识别 -->
+              <ScrollViewer Classes="Pane"
+                            IsVisible="{Binding CurrentTab, Converter={StaticResource IntEqualsConverter}, ConverterParameter=4}">
+                <StackPanel Spacing="20" DataContext="{Binding RecognizeSectionConfig}"
+                            IsEnabled="{Binding #winConfig.ViewModel.IsNotRunning}">
+                  <StackPanel Spacing="4" Margin="0,10,0,0">
+                    <TextBlock Classes="PageTitle" Text="语音识别" />
+                    <TextBlock Classes="Small Muted" Text="配置识别引擎、语言模型与响应策略。" />
+                  </StackPanel>
+
+                  <StackPanel Spacing="6">
+                    <TextBlock Classes="SectionTitle" Text="识别引擎" />
+                    <Border Classes="Separator" />
+                    <Grid Classes="SettingRow" ColumnDefinitions="*,300" Margin="0,12,0,0">
+                      <StackPanel Classes="Copy">
+                        <TextBlock Text="语音识别器" />
+                        <TextBlock Classes="Small Muted" Text="选择本地离线或云端识别引擎。" />
+                      </StackPanel>
+                      <DockPanel Grid.Column="1" VerticalAlignment="Center">
+                        <Button DockPanel.Dock="Right" Margin="8,0,0,0"
+                                Command="{Binding RefreshCommand}">刷新</Button>
+                        <ComboBox ItemsSource="{Binding RecognizersAvailable}"
+                                  SelectedValue="{Binding Recognizer}"
+                                  SelectedValueBinding="{Binding Key}">
+                          <ComboBox.Styles>
+                            <Style Selector="ComboBox /template/ ContentControl#ContentPresenter TextBlock.OnlyInPopup">
+                              <Setter Property="IsVisible" Value="False" />
+                            </Style>
+                          </ComboBox.Styles>
+                          <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                              <StackPanel>
+                                <TextBlock Text="{Binding Value.Name}" />
+                                <TextBlock Text="{Binding Value.Description}" Classes="OnlyInPopup Small Muted" />
+                              </StackPanel>
+                            </DataTemplate>
+                          </ComboBox.ItemTemplate>
+                        </ComboBox>
+                      </DockPanel>
+                    </Grid>
+                  </StackPanel>
+
+                  <StackPanel Spacing="6">
+                    <TextBlock Classes="SectionTitle" Text="引擎参数" />
+                    <Border Classes="Separator" />
+                    <controls:PluginConfigView Margin="0,10,0,0"
+                                               ConfigEditor="{Binding ConfigEditor}"
+                                               Value="{Binding PluginConfig, Mode=TwoWay}" />
+                  </StackPanel>
+                </StackPanel>
+              </ScrollViewer>
+
+              <!-- 5 资源管理 -->
+              <Grid RowDefinitions="Auto,*" Margin="28,18,28,0"
+                    IsVisible="{Binding CurrentTab, Converter={StaticResource IntEqualsConverter}, ConverterParameter=5}">
+                <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,12">
+                  <TextBlock Classes="PageTitle" Text="资源管理" />
+                  <TextBlock Classes="Small Muted" Text="管理离线识别模型及其他可选资源。" />
+                </StackPanel>
+                <views:ResourceManagerView Grid.Row="1" />
+              </Grid>
+
+              <!-- 6 关于 -->
+              <ScrollViewer Classes="Pane"
+                            IsVisible="{Binding CurrentTab, Converter={StaticResource IntEqualsConverter}, ConverterParameter=6}">
+                <StackPanel Spacing="20">
+                  <StackPanel Spacing="4" Margin="0,10,0,0">
+                    <TextBlock Classes="PageTitle" Text="关于" />
+                    <TextBlock Classes="Small Muted" Text="版本信息、项目说明与开源项目致谢。" />
+                  </StackPanel>
+
+                  <!-- 品牌横幅 -->
+                  <Border CornerRadius="14" Padding="20"
+                          Background="{DynamicResource AppPrimaryBrush}">
+                    <StackPanel Orientation="Horizontal" Spacing="16">
+                      <Border Width="56" Height="56" CornerRadius="28"
+                              Background="{DynamicResource AppPrimaryForegroundBrush}">
+                        <Image Source="/Assets/tmspeech.ico" Width="34" Height="34"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                      <StackPanel VerticalAlignment="Center" Spacing="2">
+                        <TextBlock Text="TMSpeech" FontSize="20" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AppPrimaryForegroundBrush}" />
+                        <TextBlock Text="A simple tool for recognize system audio."
+                                   Classes="Small"
+                                   Foreground="{DynamicResource AppPrimaryForegroundBrush}"
+                                   Opacity="0.82" />
+                      </StackPanel>
+                    </StackPanel>
+                  </Border>
+
+                  <Grid ColumnDefinitions="*,36,*">
+                    <StackPanel Grid.Column="0" Spacing="4">
+                      <TextBlock Classes="Small Muted" Text="版本" />
+                      <TextBlock FontFamily="Consolas, monospace">
+                        <Run Name="runVersion" />
+                      </TextBlock>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Spacing="4">
+                      <TextBlock Classes="Small Muted" Text="内部版本" />
+                      <TextBlock FontFamily="Consolas, monospace">
+                        <Run Name="runInternalVersion" />
+                      </TextBlock>
+                    </StackPanel>
+                  </Grid>
+
+                  <StackPanel Spacing="6">
+                    <TextBlock Classes="SectionTitle" Text="开源项目" />
+                    <TextBlock Classes="Small Muted"
+                               Text="This tool is made possible by the following open source projects:" />
+                    <Border Classes="Separator" Margin="0,4,0,0" />
+                    <Grid ColumnDefinitions="*,36,*" Margin="0,10,0,0">
+                      <StackPanel Grid.Column="0" Spacing="4">
+                        <TextBlock Text="sherpa-onnx" FontWeight="SemiBold" />
+                        <TextBlock Classes="Small Muted" Text="Real-time speech recognition" TextWrapping="Wrap" />
+                        <TextBlock Classes="Small" Foreground="{DynamicResource AppPrimaryBrush}"
+                                   Text="https://k2-fsa.github.io/sherpa/" TextWrapping="Wrap" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="2" Spacing="4">
+                        <TextBlock Text="NAudio" FontWeight="SemiBold" />
+                        <TextBlock Classes="Small Muted"
+                                   Text="An open source .NET audio library written by Mark Heath"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Classes="Small" Foreground="{DynamicResource AppPrimaryBrush}"
+                                   Text="https://github.com/naudio/NAudio" TextWrapping="Wrap" />
+                      </StackPanel>
+                    </Grid>
+                  </StackPanel>
+                </StackPanel>
+              </ScrollViewer>
+
+            </Panel>
+          </DockPanel>
+        </Border>
+      </Grid>
+    </Panel>
+  </Border>
 </Window>
