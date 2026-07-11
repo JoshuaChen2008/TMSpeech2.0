@@ -12,13 +12,17 @@ namespace TMSpeech.Recognizer.LLMAudio;
 /// 通过 WebSocket 流式协议：连接后发 run-task，收到 task-started 后持续推送 16-bit PCM 音频，
 /// 服务端自动断句并通过 result-generated 事件回传中间/最终文本。仅需一个 API Key。
 /// 协议参考：阿里云百炼「实时语音识别」WebSocket 文档。
+///
+/// 静音自动挂起：服务端超过约 23 秒收不到音频会以 task-failed 断开任务（request timeout）。
+/// 开启自动挂起后，本识别器在静音超过阈值时主动优雅结束会话进入挂起状态（不弹错误），
+/// 再次检测到声音时自动重连恢复识别，唤醒前的音频通过预滚缓冲补发，不丢字。
 /// </summary>
 public class LLMAudioRecognizer : IRecognizer
 {
     public string GUID => "C8E4D3B2-4A1F-4B6C-8D9E-2F3A4B5C6D7E";
     public string Name => "语音识别Fun-ASR（阿里云）";
     public string Description => "接入阿里云百炼 DashScope 实时语音识别（Fun-ASR / Paraformer）";
-    public string Version => "1.0.0";
+    public string Version => "1.1.0";
     public string SupportVersion => "any";
     public string Author => "Built-in";
     public string Url => "https://help.aliyun.com/zh/model-studio/realtime-speech-recognition";
@@ -33,19 +37,32 @@ public class LLMAudioRecognizer : IRecognizer
 
     private LLMAudioConfig _config = new();
 
-    private ClientWebSocket? _ws;
     private CancellationTokenSource? _cts;
     private Task? _worker;
-    private Task? _receiver;
-    private readonly SemaphoreSlim _sendLock = new(1, 1);
     private BlockingCollection<byte[]>? _sendQueue;
-    private TaskCompletionSource<bool>? _startedTcs;
+
+    /// <summary>世代计数：Start/Stop 各自增一次。旧会话残留的异步回调据此丢弃，
+    /// 避免"停止后立即重启"时旧会话的错误弹到新会话上。</summary>
+    private long _generation;
 
     private volatile bool _running;
-    private volatile bool _started;
-    private string _taskId = "";
+
+    /// <summary>当前是否有活跃的 WebSocket 会话正在收音（false = 挂起等待声音）。</summary>
+    private volatile bool _sessionActive;
+
+    /// <summary>最近一次检测到有效声音的时间（UTC ticks，Interlocked 访问）。</summary>
+    private long _lastVoiceTicks;
+
+    private readonly SemaphoreSlim _wakeSignal = new(0, 1);
+
+    /// <summary>挂起期间的预滚缓冲：保留唤醒前最近约 1.5 秒音频，重连后先补发。</summary>
+    private readonly Queue<byte[]> _preRoll = new();
+    private int _preRollBytes;
+    private readonly object _preRollLock = new();
 
     private const int MaxQueuedChunks = 200;
+    private const int MaxPreRollBytes = 48 * 1024; // 16kHz * 2B ≈ 1.5s
+    private const int MaxConsecutiveFailures = 5;
 
     public IPluginConfigEditor CreateConfigEditor() => new LLMAudioConfigEditor();
 
@@ -72,38 +89,78 @@ public class LLMAudioRecognizer : IRecognizer
 
     public void Feed(byte[] data)
     {
-        if (!_running || _sendQueue == null || _sendQueue.IsAddingCompleted) return;
+        var queue = _sendQueue;
+        if (!_running || queue == null || queue.IsAddingCompleted) return;
 
-        var pcm = FloatBytesToPcm16(data);
+        var (pcm, rms) = FloatBytesToPcm16(data);
         if (pcm.Length == 0) return;
 
-        while (_sendQueue.Count >= MaxQueuedChunks && _sendQueue.TryTake(out _))
+        var voiced = rms >= VoiceThreshold();
+        if (voiced)
         {
+            Interlocked.Exchange(ref _lastVoiceTicks, DateTime.UtcNow.Ticks);
         }
 
-        try
+        if (_sessionActive)
         {
-            _sendQueue.Add(pcm);
+            while (queue.Count >= MaxQueuedChunks && queue.TryTake(out _))
+            {
+            }
+
+            try
+            {
+                queue.Add(pcm);
+            }
+            catch (InvalidOperationException)
+            {
+            }
         }
-        catch (InvalidOperationException)
+        else
         {
+            // 挂起中：积累预滚缓冲，检测到声音则唤醒工作循环
+            lock (_preRollLock)
+            {
+                _preRoll.Enqueue(pcm);
+                _preRollBytes += pcm.Length;
+                while (_preRollBytes > MaxPreRollBytes && _preRoll.Count > 1)
+                {
+                    _preRollBytes -= _preRoll.Dequeue().Length;
+                }
+            }
+
+            if (voiced)
+            {
+                try
+                {
+                    _wakeSignal.Release();
+                }
+                catch (SemaphoreFullException)
+                {
+                }
+            }
         }
     }
 
-    /// <summary>16kHz 32-bit float 字节流 → 16-bit PCM（小端）字节流。</summary>
-    private static byte[] FloatBytesToPcm16(byte[] data)
+    private float VoiceThreshold() => Math.Clamp(_config.VoiceThresholdPermille, 0, 1000) / 1000f;
+
+    /// <summary>16kHz 32-bit float 字节流 → 16-bit PCM（小端）字节流，同时计算 RMS 能量。</summary>
+    private static (byte[] Pcm, float Rms) FloatBytesToPcm16(byte[] data)
     {
         var floats = MemoryMarshal.Cast<byte, float>(data);
         var pcm = new byte[floats.Length * 2];
+        double sumSq = 0;
         for (int i = 0; i < floats.Length; i++)
         {
-            var clamped = Math.Clamp(floats[i] * 32767f, -32768f, 32767f);
+            var f = floats[i];
+            sumSq += (double)f * f;
+            var clamped = Math.Clamp(f * 32767f, -32768f, 32767f);
             short s = (short)clamped;
             pcm[i * 2] = (byte)(s & 0xff);
             pcm[i * 2 + 1] = (byte)((s >> 8) & 0xff);
         }
 
-        return pcm;
+        var rms = floats.Length > 0 ? (float)Math.Sqrt(sumSq / floats.Length) : 0f;
+        return (pcm, rms);
     }
 
     private string GatewayUrl() => _config.Region == "singapore"
@@ -120,48 +177,97 @@ public class LLMAudioRecognizer : IRecognizer
         if (string.IsNullOrWhiteSpace(_config.Model))
             throw new InvalidOperationException("Fun-ASR 识别器：未配置模型名");
 
+        Interlocked.Increment(ref _generation);
         _running = true;
-        _started = false;
-        _taskId = Guid.NewGuid().ToString("N");
+        _sessionActive = false;
+        Interlocked.Exchange(ref _lastVoiceTicks, DateTime.UtcNow.Ticks);
         _cts = new CancellationTokenSource();
         _sendQueue = new BlockingCollection<byte[]>(new ConcurrentQueue<byte[]>());
-        _startedTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        lock (_preRollLock)
+        {
+            _preRoll.Clear();
+            _preRollBytes = 0;
+        }
 
-        _worker = Task.Run(() => RunAsync(_cts.Token));
+        while (_wakeSignal.CurrentCount > 0) _wakeSignal.Wait(0);
+
+        var gen = Interlocked.Read(ref _generation);
+        _worker = Task.Run(() => WorkerLoopAsync(gen, _cts.Token));
     }
 
-    private async Task RunAsync(CancellationToken ct)
+    /// <summary>
+    /// 工作循环：负责会话的建立、静音挂起与声音唤醒、失败重试。
+    /// 开启自动挂起时启动即处于挂起状态，检测到声音才建立会话（避免无声时白白连接又被服务端超时断开）。
+    /// </summary>
+    private async Task WorkerLoopAsync(long gen, CancellationToken ct)
     {
+        var consecutiveFailures = 0;
+        var everStarted = false;
+
         try
         {
-            // 1. 连接 WebSocket（鉴权仅需一个 API Key）
-            _ws = new ClientWebSocket();
-            _ws.Options.SetRequestHeader("Authorization", "bearer " + _config.ApiKey.Trim());
-            await _ws.ConnectAsync(new Uri(GatewayUrl()), ct);
-
-            // 2. 接收循环
-            _receiver = Task.Run(() => ReceiveLoopAsync(ct), ct);
-
-            // 3. 发送 run-task，等待 task-started
-            await SendJsonAsync(BuildRunTaskMessage(), ct);
-            var startedTask = _startedTcs!.Task;
-            var timeout = Task.Delay(TimeSpan.FromSeconds(10), ct);
-            if (await Task.WhenAny(startedTask, timeout) == timeout)
-                throw new InvalidOperationException("Fun-ASR 识别器：等待 task-started 超时");
-
-            // 4. 推送音频（二进制 PCM 帧）
-            foreach (var pcm in _sendQueue!.GetConsumingEnumerable(ct))
+            while (_running && !ct.IsCancellationRequested)
             {
-                await _sendLock.WaitAsync(ct);
+                if (_config.AutoSuspend)
+                {
+                    // 挂起：等待 Feed 检测到声音后唤醒
+                    await _wakeSignal.WaitAsync(ct);
+                    if (!_running || ct.IsCancellationRequested) break;
+                }
+
+                SessionResult result;
+                string? failMessage = null;
                 try
                 {
-                    if (_ws.State != WebSocketState.Open) break;
-                    await _ws.SendAsync(new ReadOnlyMemory<byte>(pcm),
-                        WebSocketMessageType.Binary, true, ct);
+                    result = await RunSessionAsync(ct);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    result = SessionResult.Failed;
+                    failMessage = ex.Message;
                 }
                 finally
                 {
-                    _sendLock.Release();
+                    _sessionActive = false;
+                }
+
+                switch (result)
+                {
+                    case SessionResult.SuspendedBySilence:
+                        consecutiveFailures = 0;
+                        everStarted = true;
+                        continue;
+
+                    case SessionResult.Completed:
+                        consecutiveFailures = 0;
+                        everStarted = true;
+                        continue;
+
+                    case SessionResult.Failed:
+                        consecutiveFailures++;
+                        if (!_config.AutoSuspend)
+                        {
+                            // 未开启自动挂起：保持旧行为，报错并结束
+                            RaiseException(gen, new InvalidOperationException(
+                                $"Fun-ASR 识别器：任务失败：{failMessage ?? "未知错误"}"));
+                            return;
+                        }
+
+                        if (!everStarted || consecutiveFailures >= MaxConsecutiveFailures)
+                        {
+                            // 从未成功建立会话（多半是 Key/网络配置问题）或连续失败过多：报错并停止重试
+                            RaiseException(gen, new InvalidOperationException(
+                                $"Fun-ASR 识别器：连接失败（已重试 {consecutiveFailures} 次）：{failMessage ?? "未知错误"}"));
+                            return;
+                        }
+
+                        // 会话曾经正常，多半是网络抖动或服务端静音超时：退避后静默重试
+                        await Task.Delay(TimeSpan.FromSeconds(Math.Min(1 << consecutiveFailures, 15)), ct);
+                        continue;
                 }
             }
         }
@@ -170,23 +276,203 @@ public class LLMAudioRecognizer : IRecognizer
         }
         catch (Exception ex)
         {
-            if (_running) ExceptionOccured?.Invoke(this, ex);
+            RaiseException(gen, ex);
         }
     }
 
-    private async Task ReceiveLoopAsync(CancellationToken ct)
+    private enum SessionResult
+    {
+        /// <summary>静音超时，已优雅结束会话进入挂起。</summary>
+        SuspendedBySilence,
+
+        /// <summary>被 Stop 取消等正常结束。</summary>
+        Completed,
+
+        /// <summary>会话异常（连接失败 / task-failed / 连接意外断开）。</summary>
+        Failed
+    }
+
+    /// <summary>会话内的接收端状态。</summary>
+    private sealed class SessionState
+    {
+        public readonly TaskCompletionSource<bool> Started =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public readonly TaskCompletionSource<bool> Finished =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public volatile string? FailMessage;
+    }
+
+    /// <summary>运行一个完整的 WebSocket 识别会话，直到静音挂起、取消或失败。</summary>
+    private async Task<SessionResult> RunSessionAsync(CancellationToken ct)
+    {
+        var gen = Interlocked.Read(ref _generation);
+        var taskId = Guid.NewGuid().ToString("N");
+        var session = new SessionState();
+        var sendLock = new SemaphoreSlim(1, 1);
+
+        using var ws = new ClientWebSocket();
+        ws.Options.SetRequestHeader("Authorization", "bearer " + _config.ApiKey.Trim());
+        await ws.ConnectAsync(new Uri(GatewayUrl()), ct);
+
+        var receiver = Task.Run(() => ReceiveLoopAsync(ws, session, gen, ct), CancellationToken.None);
+
+        try
+        {
+            await SendJsonAsync(ws, sendLock, BuildRunTaskMessage(taskId), ct);
+
+            var timeout = Task.Delay(TimeSpan.FromSeconds(10), ct);
+            if (await Task.WhenAny(session.Started.Task, timeout) == timeout)
+                throw new InvalidOperationException("等待 task-started 超时");
+            if (session.FailMessage != null)
+                throw new InvalidOperationException(session.FailMessage);
+            if (!session.Started.Task.Result)
+                throw new InvalidOperationException("连接在任务启动前被关闭");
+
+            // 会话就绪：先补发挂起期间的预滚缓冲，再切换 Feed 直通队列
+            lock (_preRollLock)
+            {
+                while (_preRoll.TryDequeue(out var chunk))
+                {
+                    try
+                    {
+                        _sendQueue?.Add(chunk);
+                    }
+                    catch (InvalidOperationException)
+                    {
+                    }
+                }
+
+                _preRollBytes = 0;
+                _sessionActive = true;
+            }
+
+            var suspendAfter = TimeSpan.FromSeconds(Math.Max(3, _config.SuspendAfterSeconds));
+
+            while (true)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                if (session.FailMessage != null)
+                    throw new InvalidOperationException(session.FailMessage);
+                if (ws.State != WebSocketState.Open)
+                    throw new InvalidOperationException("连接已断开");
+
+                if (_sendQueue!.TryTake(out var pcm, 200, ct))
+                {
+                    await sendLock.WaitAsync(ct);
+                    try
+                    {
+                        await ws.SendAsync(new ReadOnlyMemory<byte>(pcm), WebSocketMessageType.Binary, true, ct);
+                    }
+                    finally
+                    {
+                        sendLock.Release();
+                    }
+                }
+
+                if (_config.AutoSuspend)
+                {
+                    var lastVoice = new DateTime(Interlocked.Read(ref _lastVoiceTicks), DateTimeKind.Utc);
+                    if (DateTime.UtcNow - lastVoice > suspendAfter)
+                    {
+                        _sessionActive = false;
+                        await GracefulFinishAsync(ws, sendLock, session, taskId, ct);
+                        return SessionResult.SuspendedBySilence;
+                    }
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _sessionActive = false;
+            await TryCloseAsync(ws, sendLock, session, taskId);
+            return SessionResult.Completed;
+        }
+        finally
+        {
+            _sessionActive = false;
+            try
+            {
+                await Task.WhenAny(receiver, Task.Delay(2000, CancellationToken.None));
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    /// <summary>静音挂起：发送 finish-task 让服务端结算最后的句子，等待 task-finished 后关闭连接。</summary>
+    private async Task GracefulFinishAsync(ClientWebSocket ws, SemaphoreSlim sendLock, SessionState session,
+        string taskId, CancellationToken ct)
+    {
+        try
+        {
+            using var finishCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            finishCts.CancelAfter(TimeSpan.FromSeconds(3));
+            await SendJsonAsync(ws, sendLock, BuildFinishTaskMessage(taskId), finishCts.Token);
+            await Task.WhenAny(session.Finished.Task, Task.Delay(3000, finishCts.Token));
+        }
+        catch
+        {
+        }
+
+        try
+        {
+            if (ws.State is WebSocketState.Open or WebSocketState.CloseReceived)
+            {
+                using var closeCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "silence suspend", closeCts.Token);
+            }
+        }
+        catch
+        {
+        }
+    }
+
+    /// <summary>Stop/取消时尽力优雅关闭会话。</summary>
+    private async Task TryCloseAsync(ClientWebSocket ws, SemaphoreSlim sendLock, SessionState session, string taskId)
+    {
+        try
+        {
+            if (ws.State == WebSocketState.Open)
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                await SendJsonAsync(ws, sendLock, BuildFinishTaskMessage(taskId), cts.Token);
+                await Task.WhenAny(session.Finished.Task, Task.Delay(1500, cts.Token));
+            }
+        }
+        catch
+        {
+        }
+
+        try
+        {
+            if (ws.State is WebSocketState.Open or WebSocketState.CloseReceived)
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "stop", cts.Token);
+            }
+        }
+        catch
+        {
+        }
+    }
+
+    private async Task ReceiveLoopAsync(ClientWebSocket ws, SessionState session, long gen, CancellationToken ct)
     {
         var buffer = new byte[16 * 1024];
         var sb = new MemoryStream();
         try
         {
-            while (!ct.IsCancellationRequested && _ws is { State: WebSocketState.Open })
+            while (!ct.IsCancellationRequested && ws.State == WebSocketState.Open)
             {
                 sb.SetLength(0);
                 WebSocketReceiveResult result;
                 do
                 {
-                    result = await _ws.ReceiveAsync(new ArraySegment<byte>(buffer), ct);
+                    result = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), ct);
                     if (result.MessageType == WebSocketMessageType.Close) return;
                     sb.Write(buffer, 0, result.Count);
                 } while (!result.EndOfMessage);
@@ -194,7 +480,7 @@ public class LLMAudioRecognizer : IRecognizer
                 if (result.MessageType != WebSocketMessageType.Text) continue;
 
                 var json = Encoding.UTF8.GetString(sb.GetBuffer(), 0, (int)sb.Length);
-                HandleMessage(json);
+                HandleMessage(json, session, gen);
             }
         }
         catch (OperationCanceledException)
@@ -202,11 +488,17 @@ public class LLMAudioRecognizer : IRecognizer
         }
         catch (Exception ex)
         {
-            if (_running) ExceptionOccured?.Invoke(this, ex);
+            // 连接层异常交给会话循环统一判定（挂起重连或报错）
+            session.FailMessage ??= ex.Message;
+        }
+        finally
+        {
+            session.Started.TrySetResult(false);
+            session.Finished.TrySetResult(false);
         }
     }
 
-    private void HandleMessage(string json)
+    private void HandleMessage(string json, SessionState session, long gen)
     {
         try
         {
@@ -217,22 +509,22 @@ public class LLMAudioRecognizer : IRecognizer
             switch (ev)
             {
                 case "task-started":
-                    _started = true;
-                    _startedTcs?.TrySetResult(true);
+                    session.Started.TrySetResult(true);
                     break;
 
                 case "result-generated":
-                    HandleResult(doc.RootElement);
+                    HandleResult(doc.RootElement, gen);
                     break;
 
                 case "task-failed":
                     var msg = header.TryGetProperty("error_message", out var em) ? em.GetString() : "未知错误";
-                    if (_running)
-                        ExceptionOccured?.Invoke(this,
-                            new InvalidOperationException($"Fun-ASR 识别器：任务失败：{msg}"));
+                    session.FailMessage = msg ?? "未知错误";
+                    session.Started.TrySetResult(false);
+                    session.Finished.TrySetResult(false);
                     break;
 
                 case "task-finished":
+                    session.Finished.TrySetResult(true);
                     break;
             }
         }
@@ -243,8 +535,11 @@ public class LLMAudioRecognizer : IRecognizer
     }
 
     /// <summary>解析 result-generated：payload.output.sentence.{text, sentence_end}。</summary>
-    private void HandleResult(JsonElement root)
+    private void HandleResult(JsonElement root, long gen)
     {
+        // 旧世代（已被 Stop/重启淘汰）的结果直接丢弃
+        if (!_running || gen != Interlocked.Read(ref _generation)) return;
+
         if (!root.TryGetProperty("payload", out var payload)) return;
         if (!payload.TryGetProperty("output", out var output)) return;
         if (!output.TryGetProperty("sentence", out var sentence)) return;
@@ -263,22 +558,31 @@ public class LLMAudioRecognizer : IRecognizer
             TextChanged?.Invoke(this, new SpeechEventArgs { Text = info });
     }
 
-    private async Task SendJsonAsync(string json, CancellationToken ct)
+    /// <summary>只有当前世代且仍在运行时才对外抛异常，避免旧会话的错误在重启后弹窗。</summary>
+    private void RaiseException(long gen, Exception ex)
     {
-        if (_ws == null) return;
-        var bytes = Encoding.UTF8.GetBytes(json);
-        await _sendLock.WaitAsync(ct);
-        try
+        if (_running && gen == Interlocked.Read(ref _generation))
         {
-            await _ws.SendAsync(new ReadOnlyMemory<byte>(bytes), WebSocketMessageType.Text, true, ct);
-        }
-        finally
-        {
-            _sendLock.Release();
+            ExceptionOccured?.Invoke(this, ex);
         }
     }
 
-    private string BuildRunTaskMessage()
+    private static async Task SendJsonAsync(ClientWebSocket ws, SemaphoreSlim sendLock, string json,
+        CancellationToken ct)
+    {
+        var bytes = Encoding.UTF8.GetBytes(json);
+        await sendLock.WaitAsync(ct);
+        try
+        {
+            await ws.SendAsync(new ReadOnlyMemory<byte>(bytes), WebSocketMessageType.Text, true, ct);
+        }
+        finally
+        {
+            sendLock.Release();
+        }
+    }
+
+    private string BuildRunTaskMessage(string taskId)
     {
         var parameters = new Dictionary<string, object>
         {
@@ -293,7 +597,7 @@ public class LLMAudioRecognizer : IRecognizer
             ["header"] = new Dictionary<string, object>
             {
                 ["action"] = "run-task",
-                ["task_id"] = _taskId,
+                ["task_id"] = taskId,
                 ["streaming"] = "duplex"
             },
             ["payload"] = new Dictionary<string, object>
@@ -309,14 +613,14 @@ public class LLMAudioRecognizer : IRecognizer
         return JsonSerializer.Serialize(msg);
     }
 
-    private string BuildFinishTaskMessage()
+    private string BuildFinishTaskMessage(string taskId)
     {
         var msg = new Dictionary<string, object>
         {
             ["header"] = new Dictionary<string, object>
             {
                 ["action"] = "finish-task",
-                ["task_id"] = _taskId,
+                ["task_id"] = taskId,
                 ["streaming"] = "duplex"
             },
             ["payload"] = new Dictionary<string, object>
@@ -329,48 +633,53 @@ public class LLMAudioRecognizer : IRecognizer
 
     public void Stop()
     {
-        if (!_running && _ws == null) return;
+        if (!_running && _worker == null) return;
         _running = false;
-        _started = false;
+        Interlocked.Increment(ref _generation);
+        _sessionActive = false;
 
-        try { _sendQueue?.CompleteAdding(); } catch { }
-
-        // 尽力发送 finish-task
         try
         {
-            if (_ws is { State: WebSocketState.Open })
-            {
-                using var finishCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-                SendJsonAsync(BuildFinishTaskMessage(), finishCts.Token).Wait(finishCts.Token);
-            }
+            _sendQueue?.CompleteAdding();
         }
         catch
         {
         }
 
-        try { _cts?.Cancel(); } catch { }
-
         try
         {
-            if (_ws is { State: WebSocketState.Open or WebSocketState.CloseReceived })
-            {
-                using var closeCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-                _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "stop", closeCts.Token).Wait(closeCts.Token);
-            }
+            _cts?.Cancel();
         }
         catch
         {
         }
 
-        try { _worker?.Wait(2000); } catch { }
-        try { _receiver?.Wait(2000); } catch { }
+        // 唤醒可能正在等声音的工作循环，让它感知取消
+        try
+        {
+            _wakeSignal.Release();
+        }
+        catch (SemaphoreFullException)
+        {
+        }
 
-        _ws?.Dispose();
-        _ws = null;
+        try
+        {
+            _worker?.Wait(5000);
+        }
+        catch
+        {
+        }
+
         _cts?.Dispose();
         _cts = null;
+        _worker = null;
         _sendQueue?.Dispose();
         _sendQueue = null;
-        _startedTcs = null;
+        lock (_preRollLock)
+        {
+            _preRoll.Clear();
+            _preRollBytes = 0;
+        }
     }
 }

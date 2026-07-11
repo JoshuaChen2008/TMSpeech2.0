@@ -18,6 +18,9 @@ public class LLMAudioConfigEditor : IPluginConfigEditor
         _values["model"] = def.Model;
         _values["region"] = def.Region;
         _values["maxSentenceSilence"] = def.MaxSentenceSilence;
+        _values["autoSuspend"] = def.AutoSuspend;
+        _values["suspendAfterSeconds"] = def.SuspendAfterSeconds;
+        _values["voiceThresholdPermille"] = def.VoiceThresholdPermille;
 
         _formItems.Add(new PluginConfigFormItemPassword("apiKey", "API Key",
             Description: "百炼 API Key（sk-xxx），北京/新加坡地域的 Key 不同"));
@@ -31,6 +34,12 @@ public class LLMAudioConfigEditor : IPluginConfigEditor
             }));
         _formItems.Add(new PluginConfigFormItemNumber("maxSentenceSilence", "断句静音(ms，0=默认)",
             Min: 0, Max: 6000));
+        _formItems.Add(new PluginConfigFormCheckBox("autoSuspend", "静音自动挂起",
+            Description: "无声时自动暂停云端会话（不弹错误），检测到声音后自动恢复识别"));
+        _formItems.Add(new PluginConfigFormItemNumber("suspendAfterSeconds", "静音挂起秒数",
+            Description: "静音多少秒后挂起（需小于服务端 23 秒超时）", Min: 3, Max: 20));
+        _formItems.Add(new PluginConfigFormItemNumber("voiceThresholdPermille", "声音判定阈值(‰)",
+            Description: "音量 RMS 千分比，低于视为静音；环境噪音大可调高", Min: 0, Max: 100));
     }
 
     public IReadOnlyList<PluginConfigFormItem> GetFormItems() => _formItems.AsReadOnly();
@@ -52,7 +61,10 @@ public class LLMAudioConfigEditor : IPluginConfigEditor
             ApiKey = Str("apiKey"),
             Model = string.IsNullOrWhiteSpace(Str("model")) ? "fun-asr-realtime" : Str("model"),
             Region = string.IsNullOrWhiteSpace(Str("region")) ? "beijing" : Str("region"),
-            MaxSentenceSilence = Int("maxSentenceSilence", 0)
+            MaxSentenceSilence = Int("maxSentenceSilence", 0),
+            AutoSuspend = Bool("autoSuspend", true),
+            SuspendAfterSeconds = Int("suspendAfterSeconds", 12),
+            VoiceThresholdPermille = Int("voiceThresholdPermille", 5)
         };
         return JsonSerializer.Serialize(config, new JsonSerializerOptions
         {
@@ -73,6 +85,9 @@ public class LLMAudioConfigEditor : IPluginConfigEditor
                 _values["model"] = string.IsNullOrWhiteSpace(cfg.Model) ? "fun-asr-realtime" : cfg.Model;
                 _values["region"] = string.IsNullOrWhiteSpace(cfg.Region) ? "beijing" : cfg.Region;
                 _values["maxSentenceSilence"] = cfg.MaxSentenceSilence;
+                _values["autoSuspend"] = cfg.AutoSuspend;
+                _values["suspendAfterSeconds"] = cfg.SuspendAfterSeconds;
+                _values["voiceThresholdPermille"] = cfg.VoiceThresholdPermille;
             }
         }
         catch
@@ -88,6 +103,17 @@ public class LLMAudioConfigEditor : IPluginConfigEditor
         if (_values.TryGetValue(key, out var v) && v != null)
         {
             try { return Convert.ToInt32(v); }
+            catch { return fallback; }
+        }
+
+        return fallback;
+    }
+
+    private bool Bool(string key, bool fallback)
+    {
+        if (_values.TryGetValue(key, out var v) && v != null)
+        {
+            try { return Convert.ToBoolean(v); }
             catch { return fallback; }
         }
 
