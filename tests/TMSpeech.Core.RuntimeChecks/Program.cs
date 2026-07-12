@@ -4,6 +4,7 @@ using TMSpeech.Core.Services.Resource;
 using TMSpeech.Recognizer.LLMAudio;
 using TMSpeech.Recognizer.StreamingAsr;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Runtime.Loader;
@@ -108,8 +109,17 @@ Console.WriteLine("PASS streaming-asr-engine-shared-library-boundary");
 
 var pluginContextType = typeof(PluginManager).Assembly.GetType("TMSpeech.Core.Plugins.PluginManagerImpl+PluginLoadContext")
     ?? throw new InvalidOperationException("找不到插件隔离加载上下文");
-var aliyunAssemblyPath = Path.GetFullPath(
-    "src/Plugins/TMSpeech.Recognizer.AliyunCloud/bin/Debug/net6.0/TMSpeech.Recognizer.AliyunCloud.dll");
+var buildMetadata = Assembly.GetExecutingAssembly().GetCustomAttributes<AssemblyMetadataAttribute>()
+    .ToDictionary(attribute => attribute.Key, attribute => attribute.Value);
+var buildConfiguration = buildMetadata.GetValueOrDefault("BuildConfiguration")
+    ?? throw new InvalidOperationException("找不到 RuntimeChecks 构建配置");
+var buildTargetFramework = buildMetadata.GetValueOrDefault("BuildTargetFramework")
+    ?? throw new InvalidOperationException("找不到 RuntimeChecks 目标框架");
+var repositoryRoot = FindRepositoryRoot(AppContext.BaseDirectory);
+var aliyunAssemblyPath = Path.Combine(
+    repositoryRoot,
+    "src", "Plugins", "TMSpeech.Recognizer.AliyunCloud", "bin", buildConfiguration, buildTargetFramework,
+    "TMSpeech.Recognizer.AliyunCloud.dll");
 var aliyunOutputDirectory = Path.GetDirectoryName(aliyunAssemblyPath)
     ?? throw new InvalidOperationException("找不到阿里云插件输出目录");
 var aliyunManifestPath = Path.Combine(aliyunOutputDirectory, "tmmodule.json");
@@ -295,6 +305,16 @@ async Task RunStreamingFailureCase(string name, Func<NetworkStream, Task> server
         engine.Stop();
         listener.Stop();
     }
+}
+
+static string FindRepositoryRoot(string startDirectory)
+{
+    for (var directory = new DirectoryInfo(startDirectory); directory is not null; directory = directory.Parent)
+    {
+        if (File.Exists(Path.Combine(directory.FullName, "TMSpeech.sln"))) return directory.FullName;
+    }
+
+    throw new DirectoryNotFoundException($"无法从 {startDirectory} 定位包含 TMSpeech.sln 的仓库根目录");
 }
 
 static async Task CompleteWebSocketHandshake(NetworkStream stream)

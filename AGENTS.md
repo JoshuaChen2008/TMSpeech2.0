@@ -18,7 +18,7 @@
 
    ```powershell
    dotnet build tests/TMSpeech.Core.RuntimeChecks/TMSpeech.Core.RuntimeChecks.csproj -c Debug --no-restore -m:1 -t:Rebuild
-   dotnet tests/TMSpeech.Core.RuntimeChecks/bin/Debug/net6.0/TMSpeech.Core.RuntimeChecks.dll all
+   dotnet run --project tests/TMSpeech.Core.RuntimeChecks/TMSpeech.Core.RuntimeChecks.csproj -c Debug --no-build -- all
    ```
 
 5. A clean runtime-check rebuild must remain at zero compiler warnings. Fix asynchronous ownership; do not silence `CS4014` with a discarded task unless completion and failure are observed elsewhere.
