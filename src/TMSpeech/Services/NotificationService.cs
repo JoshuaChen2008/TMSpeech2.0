@@ -4,6 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using DesktopNotifications.FreeDesktop;
 using DesktopNotifications.Windows;
 using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using DesktopNotifications;
 using MsBox.Avalonia;
@@ -71,20 +72,33 @@ public static class AppBuilderExtensions
     /// <returns></returns>
     public static AppBuilder SetupDesktopNotifications(this AppBuilder builder, out INotificationManager? manager)
     {
-        if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+        try
         {
-            var context = WindowsApplicationContext.FromCurrentProcess();
-            manager = new WindowsNotificationManager(context);
+            if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+            {
+                var context = WindowsApplicationContext.FromCurrentProcess();
+                manager = new WindowsNotificationManager(context);
+            }
+            else if (Environment.OSVersion.Platform == PlatformID.Unix)
+            {
+                var context = FreeDesktopApplicationContext.FromCurrentProcess();
+                manager = new FreeDesktopNotificationManager(context);
+            }
+            else
+            {
+                //TODO: OSX once implemented/stable
+                manager = null;
+                return builder;
+            }
         }
-        else if (Environment.OSVersion.Platform == PlatformID.Unix)
+        catch (Exception ex)
         {
-            var context = FreeDesktopApplicationContext.FromCurrentProcess();
-            manager = new FreeDesktopNotificationManager(context);
-        }
-        else
-        {
-            //TODO: OSX once implemented/stable
+            // Notifications are optional. For example, Windows shortcut creation
+            // can be denied by policy; the application must still be usable.
+            Debug.WriteLine($"初始化系统通知失败，将禁用系统通知: {ex}");
+            Trace.WriteLine($"初始化系统通知失败，将禁用系统通知: {ex}");
             manager = null;
+            NotificationInitTask = Task.CompletedTask;
             return builder;
         }
 

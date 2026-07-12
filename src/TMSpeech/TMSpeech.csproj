@@ -96,7 +96,19 @@
     <Message Importance="high" Text="Found built-in plugins: @(PluginProjects, ', ')" />
     <Message Importance="high" Text="Building plugins to $(PluginsOutputDirAbs)" />
     <RemoveDir Directories="$(PluginsOutputDirAbs)" Condition="Exists('$(PluginsOutputDirAbs)')" />
-    <MSBuild Projects="@(PluginProjects)" Targets="Build" BuildInParallel="false" Properties="OutDir=$(PluginsOutputDirAbs)\%(OutPutDir);BuildPlugins=false" />
+    <!--
+      The desktop host is self-contained, but plugins execute inside that host
+      and must share its runtime. SelfContained can arrive as a global property
+      from the dotnet publish self-contained option, so remove it before setting
+      the nested plugin builds to framework-dependent. Keep RuntimeIdentifier so
+      NuGet still selects the correct native plugin assets for the target RID.
+    -->
+    <MSBuild
+      Projects="@(PluginProjects)"
+      Targets="Build"
+      BuildInParallel="false"
+      RemoveProperties="SelfContained"
+      Properties="OutDir=$(PluginsOutputDirAbs)\%(OutPutDir);BuildPlugins=false;SelfContained=false;RuntimeIdentifier=$(RuntimeIdentifier)" />
     <ItemGroup>
       <FilesToDelete Include="$(PluginsOutputDirAbs)\**\TMSpeech.Core.dll;$(PluginsOutputDirAbs)\**\TMSpeech.Core.pdb" />
     </ItemGroup>
