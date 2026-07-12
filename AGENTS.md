@@ -26,6 +26,6 @@
 
 ## Build notes
 
-- `global.json` pins .NET SDK 6.0.428.
+- `global.json` pins .NET SDK 10.0.301 so the existing C# 12 syntax compiles; projects still target .NET 6.
 - The desktop project is self-contained. A full solution/publish command must specify a RID, for example `-r win-x64`.
 - Generated `bin/` and `obj/` contents are not source and must not be committed.

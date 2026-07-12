@@ -89,7 +89,7 @@
     <Message Importance="high" Text="Building plugins to $(PluginsOutputDirAbs)" />
     <MSBuild Projects="@(PluginProjects)" Targets="Build" Properties="OutDir=$(PluginsOutputDirAbs)\%(OutPutDir)" />
     <ItemGroup>
-      <FilesToDelete Include="$(PluginsOutputDirAbs)\TMSpeech.Core.*" />
+      <FilesToDelete Include="$(PluginsOutputDirAbs)\**\TMSpeech.Core.dll;$(PluginsOutputDirAbs)\**\TMSpeech.Core.pdb" />
     </ItemGroup>
     <Delete Files="@(FilesToDelete)"/>
   </Target>
@@ -102,7 +102,12 @@
       <Output TaskParameter="AbsolutePaths" PropertyName="PublishPluginDir" />
     </ConvertToAbsolutePath>
     <Message Importance="high" Text="Copy plugins..." />
+    <RemoveDir Directories="$(PublishPluginDir)" Condition="Exists('$(PublishPluginDir)')" />
     <Exec Command="xcopy &quot;$(BuildPluginDir)&quot; &quot;$(PublishPluginDir)&quot; /E /Y /I /Q" />
+    <ItemGroup>
+      <PublishedCoreDuplicates Include="$(PublishPluginDir)\**\TMSpeech.Core.dll;$(PublishPluginDir)\**\TMSpeech.Core.pdb" />
+    </ItemGroup>
+    <Delete Files="@(PublishedCoreDuplicates)" />
   </Target>
     
 </Project>

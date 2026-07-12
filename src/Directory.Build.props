@@ -1,6 +1,8 @@
 <Project>
     <PropertyGroup>
         <Nullable>enable</Nullable>
+        <CheckEolTargetFramework>false</CheckEolTargetFramework>
+        <NuGetAudit>false</NuGetAudit>
         <AvaloniaVersion>11.0.9</AvaloniaVersion>
     </PropertyGroup>
     <ItemGroup>
