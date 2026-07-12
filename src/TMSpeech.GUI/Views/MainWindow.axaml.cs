@@ -148,10 +148,27 @@ public partial class MainWindow : ReactiveWindow<MainViewModel>
 
     #endregion
 
+    private ConfigWindow? _configWindow;
+
     private void SettingsButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         this.Topmost = false;
-        new ConfigWindow().Show();
+
+        if (_configWindow != null)
+        {
+            if (_configWindow.WindowState == WindowState.Minimized)
+            {
+                _configWindow.WindowState = WindowState.Normal;
+            }
+
+            _configWindow.Activate();
+            this.Topmost = true;
+            return;
+        }
+
+        _configWindow = new ConfigWindow();
+        _configWindow.Closed += (_, _) => { _configWindow = null; };
+        _configWindow.Show();
         this.Topmost = true;
     }
 
