@@ -16,7 +16,6 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        dotnet-version: [ '7.0.x' ]
         runtime: [ 'win-x64' ]
     steps:
       - uses: actions/checkout@v4
@@ -24,13 +23,16 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
       - name: Setup dotnet
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: ${{ matrix.dotnet-version }}
+          global-json-file: global.json
       - name: Install dependencies
         run: dotnet restore -r ${{ matrix.runtime }} --locked-mode
       - name: Publish
         run: dotnet publish -r ${{ matrix.runtime }} -c Release -o ./publish --self-contained true ./src/TMSpeech/TMSpeech.csproj
+      - name: Verify publish layout and size
+        shell: pwsh
+        run: ./scripts/Test-PublishLayout.ps1 -PublishDir ./publish
       - name: Archive
         uses: actions/upload-artifact@v4
         with:
