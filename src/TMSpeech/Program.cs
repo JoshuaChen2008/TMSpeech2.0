@@ -12,7 +12,7 @@ namespace TMSpeech.GUI.Desktop;
 class Program
 {
     public const string LogFileName = "LastRun.log";
-    internal static INotificationManager NotificationManager = null!;
+    internal static INotificationManager? NotificationManager;
 
     // Initialization code. Don't use any Avalonia, third-party APIs or any
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
@@ -49,7 +49,7 @@ class Program
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
-            .SetupDesktopNotifications(out NotificationManager!)
+            .SetupDesktopNotifications(out NotificationManager)
             .WithInterFont()
             .LogToTrace()
             .UseReactiveUI();
