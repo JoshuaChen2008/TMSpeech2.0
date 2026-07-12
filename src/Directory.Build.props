@@ -4,6 +4,16 @@
         <CheckEolTargetFramework>false</CheckEolTargetFramework>
         <NuGetAudit>false</NuGetAudit>
         <AvaloniaVersion>11.0.9</AvaloniaVersion>
+
+        <!--
+          GitVersion derives release versions from repository history. Source
+          archives do not contain .git metadata, so keep them buildable with
+          an explicit local-only fallback version.
+        -->
+        <_GitMetadataPath>$(MSBuildThisFileDirectory)..\.git</_GitMetadataPath>
+        <_HasGitMetadata Condition="Exists('$(_GitMetadataPath)')">true</_HasGitMetadata>
+        <DisableGitVersionTask Condition="'$(DisableGitVersionTask)' == '' and '$(_HasGitMetadata)' != 'true'">true</DisableGitVersionTask>
+        <Version Condition="'$(DisableGitVersionTask)' == 'true' and '$(Version)' == ''">0.1.0-local</Version>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="GitVersion.MsBuild" Version="5.12.0" PrivateAssets="all"/>
