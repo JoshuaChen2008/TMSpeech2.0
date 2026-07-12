@@ -147,6 +147,20 @@ if (retryState.ConsecutiveFailures != 0)
 
 Console.WriteLine("PASS llm-audio-retry-state");
 
+var protocolJson = LLMAudioProtocol.BuildRunTaskMessage(
+    new LLMAudioConfig { Model = "offline-model", MaxSentenceSilence = 900 }, "offline-task");
+using (var protocolDocument = System.Text.Json.JsonDocument.Parse(protocolJson))
+{
+    var root = protocolDocument.RootElement;
+    if (root.GetProperty("header").GetProperty("task_id").GetString() != "offline-task" ||
+        root.GetProperty("payload").GetProperty("model").GetString() != "offline-model")
+        throw new InvalidOperationException("LLM Audio 协议构建结果错误");
+}
+var convertedFrame = AudioFrameConverter.FloatBytesToPcm16(Array.Empty<byte>());
+if (convertedFrame.Pcm.Length != 0 || convertedFrame.Rms != 0)
+    throw new InvalidOperationException("空音频帧转换结果错误");
+Console.WriteLine("PASS llm-audio-protocol-and-frame-converter");
+
 var sessionCalls = 0;
 var retrySessionStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 var runtimeRecognizer = new LLMAudioRecognizer(async (ct, onSessionStarted) =>

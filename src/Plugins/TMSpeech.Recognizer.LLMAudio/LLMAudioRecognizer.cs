@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using TMSpeech.Core.Plugins;
@@ -104,7 +103,7 @@ public class LLMAudioRecognizer : IRecognizer
         var queue = _sendQueue;
         if (!_running || queue == null || queue.IsAddingCompleted) return;
 
-        var (pcm, rms) = FloatBytesToPcm16(data);
+        var (pcm, rms) = AudioFrameConverter.FloatBytesToPcm16(data);
         if (pcm.Length == 0) return;
 
         var voiced = rms >= VoiceThreshold();
@@ -156,25 +155,6 @@ public class LLMAudioRecognizer : IRecognizer
     private float VoiceThreshold() => Math.Clamp(_config.VoiceThresholdPermille, 0, 1000) / 1000f;
 
     /// <summary>16kHz 32-bit float 字节流 → 16-bit PCM（小端）字节流，同时计算 RMS 能量。</summary>
-    private static (byte[] Pcm, float Rms) FloatBytesToPcm16(byte[] data)
-    {
-        var floats = MemoryMarshal.Cast<byte, float>(data);
-        var pcm = new byte[floats.Length * 2];
-        double sumSq = 0;
-        for (int i = 0; i < floats.Length; i++)
-        {
-            var f = floats[i];
-            sumSq += (double)f * f;
-            var clamped = Math.Clamp(f * 32767f, -32768f, 32767f);
-            short s = (short)clamped;
-            pcm[i * 2] = (byte)(s & 0xff);
-            pcm[i * 2 + 1] = (byte)((s >> 8) & 0xff);
-        }
-
-        var rms = floats.Length > 0 ? (float)Math.Sqrt(sumSq / floats.Length) : 0f;
-        return (pcm, rms);
-    }
-
     private string GatewayUrl() => _config.Region == "singapore"
         ? "wss://dashscope-intl.aliyuncs.com/api-ws/v1/inference/"
         : "wss://dashscope.aliyuncs.com/api-ws/v1/inference/";
@@ -329,7 +309,7 @@ public class LLMAudioRecognizer : IRecognizer
 
         try
         {
-            await SendJsonAsync(ws, sendLock, BuildRunTaskMessage(taskId), ct);
+            await SendJsonAsync(ws, sendLock, LLMAudioProtocol.BuildRunTaskMessage(_config, taskId), ct);
 
             var timeout = Task.Delay(TimeSpan.FromSeconds(10), ct);
             if (await Task.WhenAny(session.Started.Task, timeout) == timeout)
@@ -421,7 +401,7 @@ public class LLMAudioRecognizer : IRecognizer
         {
             using var finishCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             finishCts.CancelAfter(TimeSpan.FromSeconds(3));
-            await SendJsonAsync(ws, sendLock, BuildFinishTaskMessage(taskId), finishCts.Token);
+            await SendJsonAsync(ws, sendLock, LLMAudioProtocol.BuildFinishTaskMessage(taskId), finishCts.Token);
             await Task.WhenAny(session.Finished.Task, Task.Delay(3000, finishCts.Token));
         }
         catch
@@ -449,7 +429,7 @@ public class LLMAudioRecognizer : IRecognizer
             if (ws.State == WebSocketState.Open)
             {
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-                await SendJsonAsync(ws, sendLock, BuildFinishTaskMessage(taskId), cts.Token);
+                await SendJsonAsync(ws, sendLock, LLMAudioProtocol.BuildFinishTaskMessage(taskId), cts.Token);
                 await Task.WhenAny(session.Finished.Task, Task.Delay(1500, cts.Token));
             }
         }
@@ -590,55 +570,6 @@ public class LLMAudioRecognizer : IRecognizer
         {
             sendLock.Release();
         }
-    }
-
-    private string BuildRunTaskMessage(string taskId)
-    {
-        var parameters = new Dictionary<string, object>
-        {
-            ["format"] = "pcm",
-            ["sample_rate"] = 16000
-        };
-        if (_config.MaxSentenceSilence > 0)
-            parameters["max_sentence_silence"] = _config.MaxSentenceSilence;
-
-        var msg = new Dictionary<string, object>
-        {
-            ["header"] = new Dictionary<string, object>
-            {
-                ["action"] = "run-task",
-                ["task_id"] = taskId,
-                ["streaming"] = "duplex"
-            },
-            ["payload"] = new Dictionary<string, object>
-            {
-                ["task_group"] = "audio",
-                ["task"] = "asr",
-                ["function"] = "recognition",
-                ["model"] = _config.Model,
-                ["parameters"] = parameters,
-                ["input"] = new Dictionary<string, object>()
-            }
-        };
-        return JsonSerializer.Serialize(msg);
-    }
-
-    private string BuildFinishTaskMessage(string taskId)
-    {
-        var msg = new Dictionary<string, object>
-        {
-            ["header"] = new Dictionary<string, object>
-            {
-                ["action"] = "finish-task",
-                ["task_id"] = taskId,
-                ["streaming"] = "duplex"
-            },
-            ["payload"] = new Dictionary<string, object>
-            {
-                ["input"] = new Dictionary<string, object>()
-            }
-        };
-        return JsonSerializer.Serialize(msg);
     }
 
     public void Stop()
