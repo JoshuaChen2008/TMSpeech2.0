@@ -39,7 +39,7 @@ public class SystemObjectNewtonsoftCompatibleConverter : JsonConverter<object>
                 return datetime;
             }
 
-            return reader.GetString();
+            return reader.GetString()!;
         }
 
         // Use JsonElement as fallback.

@@ -8,7 +8,7 @@ public class AliyunCloudConfigEditor : IPluginConfigEditor
     private readonly Dictionary<string, object> _values = new();
     private readonly List<PluginConfigFormItem> _formItems = new();
 
-    public event EventHandler<EventArgs>? FormItemsUpdated;
+    public event EventHandler<EventArgs>? FormItemsUpdated { add { } remove { } }
     public event EventHandler<EventArgs>? ValueUpdated;
 
     public AliyunCloudConfigEditor()

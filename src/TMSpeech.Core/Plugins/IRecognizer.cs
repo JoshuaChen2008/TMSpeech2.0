@@ -20,13 +20,13 @@ namespace TMSpeech.Core.Plugins
 
     public class SpeechEventArgs
     {
-        public TextInfo Text { get; set; }
+        public TextInfo Text { get; set; } = new(string.Empty);
     }
 
     public interface IRecognizer : IPlugin, IRunable
     {
-        event EventHandler<SpeechEventArgs> TextChanged;
-        event EventHandler<SpeechEventArgs> SentenceDone;
+        event EventHandler<SpeechEventArgs>? TextChanged;
+        event EventHandler<SpeechEventArgs>? SentenceDone;
 
         /// <summary>
         /// Feed audio data to the recognizer (e.g. from a microphone or a file

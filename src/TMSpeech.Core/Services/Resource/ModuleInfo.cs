@@ -12,7 +12,7 @@ public static class ModuleInfoTypeEnums
 public class ModuleInfo
 {
     [JsonPropertyName("id")]
-    public string ID { get; set; }
+    public string ID { get; set; } = "";
 
     [JsonPropertyName("version")]
     public long Version { get; set; }
@@ -24,10 +24,10 @@ public class ModuleInfo
     public string? UpdateDesc { get; set; }
 
     [JsonPropertyName("displayVersion")]
-    public string DisplayVersion { get; set; }
+    public string DisplayVersion { get; set; } = "";
 
     [JsonPropertyName("name")]
-    public string Name { get; set; }
+    public string Name { get; set; } = "";
 
     [JsonPropertyName("author")]
     public string? Author { get; set; }
@@ -69,16 +69,16 @@ public class ModuleInfo
 public class SherpaOnnxModelPathInfo
 {
     [JsonPropertyName("encoder")]
-    public string EncoderPath { get; set; }
+    public string EncoderPath { get; set; } = "";
 
     [JsonPropertyName("decoder")]
-    public string DecoderPath { get; set; }
+    public string DecoderPath { get; set; } = "";
 
     [JsonPropertyName("joiner")]
-    public string JoinerPath { get; set; }
+    public string JoinerPath { get; set; } = "";
 
     [JsonPropertyName("token")]
-    public string TokenPath { get; set; }
+    public string TokenPath { get; set; } = "";
 }
 
 public class InstallStep
@@ -88,7 +88,7 @@ public class InstallStep
     /// download, extract, write_file, write_module_json
     /// </summary>
     [JsonPropertyName("type")]
-    public string Type { get; set; }
+    public string Type { get; set; } = "";
 
     [JsonPropertyName("url")]
     public string? DownloadURL { get; set; }
@@ -97,7 +97,7 @@ public class InstallStep
     public int? ExtractStep { get; set; }
 
     [JsonPropertyName("extractType")]
-    public string ExtractType { get; set; }
+    public string ExtractType { get; set; } = "";
 
     [JsonPropertyName("writeContent")]
     public string? WriteContent { get; set; }

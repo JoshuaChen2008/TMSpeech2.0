@@ -38,10 +38,10 @@ namespace TMSpeech.Core
 
         public long RunningSeconds { get; protected set; }
 
-        public event EventHandler<JobStatus> StatusChanged;
-        public event EventHandler<SpeechEventArgs> TextChanged;
-        public event EventHandler<SpeechEventArgs> SentenceDone;
-        public event EventHandler<long> RunningSecondsChanged;
+        public event EventHandler<JobStatus>? StatusChanged;
+        public event EventHandler<SpeechEventArgs>? TextChanged;
+        public event EventHandler<SpeechEventArgs>? SentenceDone;
+        public event EventHandler<long>? RunningSecondsChanged;
 
         protected void OnTextChanged(SpeechEventArgs e) => TextChanged?.Invoke(this, e);
         protected void OnSentenceDone(SpeechEventArgs e) => SentenceDone?.Invoke(this, e);
@@ -69,9 +69,9 @@ namespace TMSpeech.Core
 
         private IAudioSource? _audioSource;
         private IRecognizer? _recognizer;
-        private HashSet<string> _sensitiveWords;
+        private HashSet<string> _sensitiveWords = new();
         private bool _disableInThisSentence = false;
-        private string logFile;
+        private string logFile = "";
         private string currentText = "";
         private readonly PluginFailureStopCoordinator _failureStopCoordinator = new();
         private readonly object _lifecycleLock = new();
@@ -113,7 +113,7 @@ namespace TMSpeech.Core
             {
                 configRecognizer = _pluginManager.Recognizers.Keys.First();
             }
-            _recognizer = _pluginManager.Recognizers[configRecognizer];
+            _recognizer = _pluginManager.Recognizers[configRecognizer!];
 
             if (_recognizer != null)
             {

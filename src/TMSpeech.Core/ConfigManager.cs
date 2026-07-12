@@ -39,7 +39,7 @@ public abstract class ConfigManager
     public abstract T Get<T>(string key);
     public abstract IReadOnlyDictionary<string, object> GetAll();
 
-    public event EventHandler<ConfigChangedEventArgs> ConfigChanged;
+    public event EventHandler<ConfigChangedEventArgs>? ConfigChanged;
 
     public void OnConfigChange(ConfigChangedEventArgs arg)
     {
@@ -90,11 +90,11 @@ class LocalConfigManagerImpl : ConfigManager
         }
     }
 
-    private Dictionary<string, object>? _config = new();
+    private Dictionary<string, object> _config = new();
 
     public override void Apply<T>(string key, T value)
     {
-        BatchApply(new Dictionary<string, object> { { key, value } });
+        BatchApply(new Dictionary<string, object> { { key, value! } });
     }
 
     public override void BatchApply(IDictionary<string, object> config)
@@ -119,8 +119,8 @@ class LocalConfigManagerImpl : ConfigManager
 
     public override T Get<T>(string key)
     {
-        if (!_config.ContainsKey(key)) return default(T);
-        return (T)Convert.ChangeType(_config[key], typeof(T));
+        if (!_config.ContainsKey(key)) return default!;
+        return (T)Convert.ChangeType(_config[key], typeof(T))!;
     }
 
     public override IReadOnlyDictionary<string, object> GetAll()
@@ -206,7 +206,7 @@ class LocalConfigManagerImpl : ConfigManager
 
 public static class ConfigManagerFactory
 {
-    private static Dictionary<string, object> _defaultConfig;
+    private static Dictionary<string, object>? _defaultConfig;
 
     public static void Init(Dictionary<string, object> defaultConfig)
     {
@@ -214,7 +214,7 @@ public static class ConfigManagerFactory
         _defaultConfig = defaultConfig;
     }
 
-    private static Lazy<ConfigManager> _instance = new(() => new LocalConfigManagerImpl(_defaultConfig));
+    private static Lazy<ConfigManager> _instance = new(() => new LocalConfigManagerImpl(_defaultConfig!));
     public static ConfigManager Instance
     {
         get

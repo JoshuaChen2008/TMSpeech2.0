@@ -382,9 +382,9 @@ sealed class FakeAudioSource : FakePluginBase, IAudioSource
 {
     public int StartCount;
     public int StopCount;
-    public event EventHandler<SourceStatus>? StatusChanged;
-    public event EventHandler<byte[]>? DataAvailable;
-    public event EventHandler<Exception>? ExceptionOccured;
+    public event EventHandler<SourceStatus>? StatusChanged { add { } remove { } }
+    public event EventHandler<byte[]>? DataAvailable { add { } remove { } }
+    public event EventHandler<Exception>? ExceptionOccured { add { } remove { } }
     public void Start() => Interlocked.Increment(ref StartCount);
     public void Stop() => Interlocked.Increment(ref StopCount);
 }
@@ -393,8 +393,8 @@ sealed class FailingOnStartRecognizer : FakePluginBase, IRecognizer
 {
     public int StartCount;
     public int StopCount;
-    public event EventHandler<SpeechEventArgs>? TextChanged;
-    public event EventHandler<SpeechEventArgs>? SentenceDone;
+    public event EventHandler<SpeechEventArgs>? TextChanged { add { } remove { } }
+    public event EventHandler<SpeechEventArgs>? SentenceDone { add { } remove { } }
     public event EventHandler<Exception>? ExceptionOccured;
 
     public void Start()
