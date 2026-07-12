@@ -14,6 +14,7 @@
         <_HasGitMetadata Condition="Exists('$(_GitMetadataPath)')">true</_HasGitMetadata>
         <DisableGitVersionTask Condition="'$(DisableGitVersionTask)' == '' and '$(_HasGitMetadata)' != 'true'">true</DisableGitVersionTask>
         <Version Condition="'$(DisableGitVersionTask)' == 'true' and '$(Version)' == ''">0.1.0-local</Version>
+        <DefineConstants Condition="'$(DisableGitVersionTask)' == 'true'">$(DefineConstants);SOURCE_ARCHIVE_BUILD</DefineConstants>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="GitVersion.MsBuild" Version="5.12.0" PrivateAssets="all"/>

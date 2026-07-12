@@ -17,10 +17,8 @@ namespace TMSpeech.GUI.Views
             InitializeComponent();
             ViewModel = new ConfigViewModel();
 
-            runVersion.Text = GitVersionInformation.FullSemVer;
-
-            runInternalVersion.Text = GitVersionInformation.ShortSha +
-                                      (GitVersionInformation.UncommittedChanges != "0" ? " (dirty)" : "");
+            runVersion.Text = BuildVersionInfo.Version;
+            runInternalVersion.Text = BuildVersionInfo.InternalVersion;
 
             UpdateThemeButton();
 
