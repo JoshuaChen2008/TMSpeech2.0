@@ -33,9 +33,11 @@
     <converter:IntToTextAlignmentConverter x:Key="IntToTextAlignmentConverter" />
   </Window.Resources>
   <Window.Styles>
-    <!-- 设置页通用行内控件 -->
-    <Style Selector="ScrollViewer.Pane">
-      <Setter Property="Padding" Value="28,8,28,24" />
+    <!-- 设置页通用行内控件。
+         注意：内边距必须放在内容根 StackPanel 的 Margin 上而非 ScrollViewer.Padding，
+         否则 Avalonia 的 Extent/Viewport 口径不一致会导致无法滚动到底部。 -->
+    <Style Selector="ScrollViewer.Pane > StackPanel">
+      <Setter Property="Margin" Value="28,8,28,24" />
     </Style>
     <Style Selector="ColorPicker">
       <Setter Property="HorizontalAlignment" Value="Stretch" />
