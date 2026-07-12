@@ -1,5 +1,6 @@
 using TMSpeech.Core;
 using TMSpeech.Core.Plugins;
+using TMSpeech.Core.Services.Resource;
 using TMSpeech.Recognizer.LLMAudio;
 using TMSpeech.Recognizer.StreamingAsr;
 using System.Net.Sockets;
@@ -79,10 +80,49 @@ if (!lifecycle.TryMarkRunning(secondGeneration))
 
 Console.WriteLine("PASS single-session-lifecycle-owner");
 
+var duplicateReports = new List<string>();
+var uniqueResources = ResourceManager.DeduplicateResources(
+    new[]
+    {
+        new Resource
+        {
+            LocalDir = "first",
+            LocalInfo = new ModuleInfo { ID = "duplicate", Name = "first" }
+        },
+        new Resource
+        {
+            LocalDir = "second",
+            LocalInfo = new ModuleInfo { ID = "duplicate", Name = "second" }
+        }
+    },
+    duplicateReports.Add);
+if (uniqueResources.Count != 1 || uniqueResources[0].LocalDir != "first" || duplicateReports.Count != 1)
+    throw new InvalidOperationException("重复资源 ID 没有被确定性地隔离");
+
+Console.WriteLine("PASS duplicate-resource-id-isolated");
+
+if (typeof(StreamingAsrEngine).Assembly.GetName().Name != "TMSpeech.StreamingAsr.Core")
+    throw new InvalidOperationException("流式 ASR 引擎仍由插件程序集承载");
+
+Console.WriteLine("PASS streaming-asr-engine-shared-library-boundary");
+
 var pluginContextType = typeof(PluginManager).Assembly.GetType("TMSpeech.Core.Plugins.PluginManagerImpl+PluginLoadContext")
     ?? throw new InvalidOperationException("找不到插件隔离加载上下文");
 var aliyunAssemblyPath = Path.GetFullPath(
     "src/Plugins/TMSpeech.Recognizer.AliyunCloud/bin/Debug/net6.0/TMSpeech.Recognizer.AliyunCloud.dll");
+var aliyunOutputDirectory = Path.GetDirectoryName(aliyunAssemblyPath)
+    ?? throw new InvalidOperationException("找不到阿里云插件输出目录");
+var aliyunManifestPath = Path.Combine(aliyunOutputDirectory, "tmmodule.json");
+using (var manifest = System.Text.Json.JsonDocument.Parse(File.ReadAllText(aliyunManifestPath)))
+{
+    if (manifest.RootElement.GetProperty("id").GetString() != "TMSpeech.Recognizer.AliyunCloud")
+        throw new InvalidOperationException("阿里云插件清单被依赖项目覆盖");
+}
+if (!File.Exists(Path.Combine(aliyunOutputDirectory, "TMSpeech.StreamingAsr.Core.dll")))
+    throw new InvalidOperationException("阿里云插件旁缺少共享流式 ASR 引擎程序集");
+
+Console.WriteLine("PASS plugin-manifest-and-shared-dependency-output");
+
 var pluginContext = (AssemblyLoadContext?)Activator.CreateInstance(
     pluginContextType, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public |
                        System.Reflection.BindingFlags.NonPublic, null, new object[] { aliyunAssemblyPath }, null)

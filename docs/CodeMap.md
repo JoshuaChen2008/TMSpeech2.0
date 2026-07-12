@@ -4,7 +4,8 @@
 | --- | --- | --- |
 | Start, pause, stop, plugin failure | `src/TMSpeech.Core/JobManager.cs`, `src/TMSpeech.Core/SessionLifecycle.cs` | lifecycle and failure rollback checks |
 | Plugin discovery and dependency loading | `src/TMSpeech.Core/Plugins/PluginManager.cs` | adjacent managed dependency smoke |
-| Generic streaming ASR | `src/Plugins/TMSpeech.Recognizer.StreamingAsr/StreamingAsrEngine.cs` | loopback close/error/normal-stop checks |
+| Generic streaming ASR engine | `src/TMSpeech.StreamingAsr.Core/StreamingAsrEngine.cs` | shared-library boundary plus loopback close/error/normal-stop checks |
+| Generic streaming ASR plugin | `src/Plugins/TMSpeech.Recognizer.StreamingAsr` | manifest and adjacent shared dependency checks |
 | Aliyun NLS adapter | `src/Plugins/TMSpeech.Recognizer.AliyunCloud/AliyunCloudRecognizer.cs` | shared-engine build and isolated load smoke |
 | DashScope/Fun-ASR lifecycle | `src/Plugins/TMSpeech.Recognizer.LLMAudio/LLMAudioRecognizer.cs` | retry and worker reconnect checks |
 | DashScope protocol JSON | `src/Plugins/TMSpeech.Recognizer.LLMAudio/LLMAudioProtocol.cs` | offline protocol check |
@@ -25,4 +26,5 @@ Audio normally flows `IAudioSource.DataAvailable → JobManager → IRecognizer.
 - Stop audio source and recognizer independently so one failure cannot skip the other cleanup.
 - Publish status events only after internal state is ready for synchronous re-entry.
 - Treat plugin load contexts as isolated: `TMSpeech.Core` comes from the default context; companion DLLs come from the plugin directory.
+- Keep reusable protocol engines in non-plugin class libraries; a plugin project must not reference another plugin project with its own `tmmodule.json`.
 - Publish cleanup must not delete the entry assembly or a plugin's unique dependencies.

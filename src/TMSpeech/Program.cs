@@ -36,9 +36,12 @@ class Program
         }
         catch (Exception e)
         {
-            Debug.WriteLine($"主线程 unhandled exception: {e.Message}");
+            Debug.WriteLine($"主线程 unhandled exception: {e}");
+            Trace.WriteLine($"主线程 unhandled exception: {e}");
+            Trace.Flush();
+            var rootCause = e.GetBaseException();
             // TODO 当前窗口会卡死，等待10秒展示报错后退出。如何防止卡死？
-            MessageBoxManager.GetMessageBoxStandard("严重错误", $"未捕获的异常：\n{e.Message}\n{e.StackTrace}\n请将日志提交到Github Issue，10s后应用将退出\n日志文件位置：{Directory.GetCurrentDirectory()}\\{LogFileName}").ShowAsync().Wait(10000);
+            MessageBoxManager.GetMessageBoxStandard("严重错误", $"未捕获的异常：\n{rootCause.Message}\n{rootCause.StackTrace}\n请将日志提交到Github Issue，10s后应用将退出\n日志文件位置：{Directory.GetCurrentDirectory()}\\{LogFileName}").ShowAsync().Wait(10000);
         }
     }
 

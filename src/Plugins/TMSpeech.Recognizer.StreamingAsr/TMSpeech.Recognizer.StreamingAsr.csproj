@@ -12,6 +12,7 @@
       <Private>false</Private>
       <ExcludeAssets>runtime</ExcludeAssets>
     </ProjectReference>
+    <ProjectReference Include="..\..\TMSpeech.StreamingAsr.Core\TMSpeech.StreamingAsr.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

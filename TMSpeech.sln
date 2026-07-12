@@ -5,6 +5,8 @@ VisualStudioVersion = 17.6.33723.286
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TMSpeech.Core", "src\TMSpeech.Core\TMSpeech.Core.csproj", "{1C40A8DF-8A44-40A7-B4E0-845C57B219E5}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TMSpeech.StreamingAsr.Core", "src\TMSpeech.StreamingAsr.Core\TMSpeech.StreamingAsr.Core.csproj", "{B4C6D8E0-4444-4555-9666-777788889999}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Plugins", "Plugins", "{067D976B-853C-432D-B522-9DA758808BCD}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TMSpeech.GUI", "src\TMSpeech.GUI\TMSpeech.GUI.csproj", "{A02E230A-80DC-4DF7-95AD-FFCCB5579F9E}"
@@ -40,6 +42,10 @@ Global
 		{1C40A8DF-8A44-40A7-B4E0-845C57B219E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1C40A8DF-8A44-40A7-B4E0-845C57B219E5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1C40A8DF-8A44-40A7-B4E0-845C57B219E5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B4C6D8E0-4444-4555-9666-777788889999}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B4C6D8E0-4444-4555-9666-777788889999}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B4C6D8E0-4444-4555-9666-777788889999}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B4C6D8E0-4444-4555-9666-777788889999}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A02E230A-80DC-4DF7-95AD-FFCCB5579F9E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A02E230A-80DC-4DF7-95AD-FFCCB5579F9E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A02E230A-80DC-4DF7-95AD-FFCCB5579F9E}.Release|Any CPU.ActiveCfg = Release|Any CPU

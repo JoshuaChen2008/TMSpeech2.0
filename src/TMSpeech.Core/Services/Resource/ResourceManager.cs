@@ -117,8 +117,38 @@ public class ResourceManager
             }
         }
 
-        _localCache = ret;
-        _localCacheDict = ret.ToDictionary(x => x.ID, x => x);
+        _localCache = DeduplicateResources(ret, message => Debug.WriteLine(message));
+        _localCacheDict = _localCache.ToDictionary(x => x.ID, x => x);
+    }
+
+    internal static IList<Resource> DeduplicateResources(
+        IEnumerable<Resource> resources,
+        Action<string>? reportConflict = null)
+    {
+        var unique = new List<Resource>();
+        var byId = new Dictionary<string, Resource>(StringComparer.Ordinal);
+
+        foreach (var resource in resources)
+        {
+            var id = resource.ID;
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                reportConflict?.Invoke($"忽略 ID 为空的资源：{resource.LocalDir ?? "<remote>"}");
+                continue;
+            }
+
+            if (byId.TryGetValue(id, out var existing))
+            {
+                reportConflict?.Invoke(
+                    $"忽略重复资源 ID '{id}'。保留：{existing.LocalDir ?? "<remote>"}；冲突：{resource.LocalDir ?? "<remote>"}");
+                continue;
+            }
+
+            byId.Add(id, resource);
+            unique.Add(resource);
+        }
+
+        return unique;
     }
 
     public Task RemoveResource(Resource resource)
