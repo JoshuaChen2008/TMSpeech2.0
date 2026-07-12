@@ -62,6 +62,22 @@ if (Volatile.Read(ref stopCount) != 3) throw new InvalidOperationException("重�
 
 Console.WriteLine("PASS plugin-failure-stop");
 
+var lifecycle = new SessionLifecycle();
+var firstGeneration = lifecycle.BeginStart();
+if (!lifecycle.TryMarkRunning(firstGeneration))
+    throw new InvalidOperationException("当前会话不能进入 Running");
+lifecycle.BeginStop();
+lifecycle.MarkStopped();
+var secondGeneration = lifecycle.BeginStart();
+if (lifecycle.IsCurrent(firstGeneration) || !lifecycle.IsCurrent(secondGeneration))
+    throw new InvalidOperationException("旧会话仍然拥有生命周期");
+if (lifecycle.TryMarkRunning(firstGeneration))
+    throw new InvalidOperationException("旧会话错误地接管了新会话状态");
+if (!lifecycle.TryMarkRunning(secondGeneration))
+    throw new InvalidOperationException("新会话不能进入 Running");
+
+Console.WriteLine("PASS single-session-lifecycle-owner");
+
 var audio = new FakeAudioSource();
 var recognizer = new FailingOnStartRecognizer();
 var pluginManager = new FakePluginManager(audio, recognizer);
