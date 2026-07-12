@@ -5,6 +5,7 @@ using TMSpeech.Recognizer.StreamingAsr;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
+using System.Runtime.Loader;
 
 try
 {
@@ -77,6 +78,20 @@ if (!lifecycle.TryMarkRunning(secondGeneration))
     throw new InvalidOperationException("新会话不能进入 Running");
 
 Console.WriteLine("PASS single-session-lifecycle-owner");
+
+var pluginContextType = typeof(PluginManager).Assembly.GetType("TMSpeech.Core.Plugins.PluginManagerImpl+PluginLoadContext")
+    ?? throw new InvalidOperationException("找不到插件隔离加载上下文");
+var aliyunAssemblyPath = Path.GetFullPath(
+    "src/Plugins/TMSpeech.Recognizer.AliyunCloud/bin/Debug/net6.0/TMSpeech.Recognizer.AliyunCloud.dll");
+var pluginContext = (AssemblyLoadContext?)Activator.CreateInstance(
+    pluginContextType, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public |
+                       System.Reflection.BindingFlags.NonPublic, null, new object[] { aliyunAssemblyPath }, null)
+    ?? throw new InvalidOperationException("不能创建插件隔离加载上下文");
+var isolatedAliyun = pluginContext.LoadFromAssemblyPath(aliyunAssemblyPath);
+if (!isolatedAliyun.GetTypes().Any(t => t.Name == "AliyunCloudRecognizer"))
+    throw new InvalidOperationException("隔离上下文未加载阿里云识别器");
+
+Console.WriteLine("PASS plugin-adjacent-managed-dependency-load");
 
 var audio = new FakeAudioSource();
 var recognizer = new FailingOnStartRecognizer();

@@ -113,6 +113,7 @@ namespace TMSpeech.Core.Plugins
         class PluginLoadContext : AssemblyLoadContext
         {
             private AssemblyDependencyResolver _resolver;
+            private readonly string _pluginDirectory;
             private string? _runtimesNativePath = null;
 
             private string GetRuntimeIdentifier()
@@ -135,6 +136,7 @@ namespace TMSpeech.Core.Plugins
             public PluginLoadContext(string pluginPath)
             {
                 _resolver = new AssemblyDependencyResolver(pluginPath);
+                _pluginDirectory = Path.GetDirectoryName(pluginPath)!;
                 var nativeRuntimes = Path.Combine(Path.GetDirectoryName(pluginPath), "runtimes", GetRuntimeIdentifier(),
                     "native");
                 if (!Directory.Exists(nativeRuntimes)) _runtimesNativePath = nativeRuntimes;
@@ -148,6 +150,12 @@ namespace TMSpeech.Core.Plugins
                 {
                     return LoadFromAssemblyPath(assemblyPath);
                 }
+
+                // Dynamic-loading projects can omit project references from the
+                // plugin deps.json. Resolve managed companions shipped beside the
+                // plugin entry assembly before falling back to the default context.
+                var adjacentPath = Path.Combine(_pluginDirectory, $"{assemblyName.Name}.dll");
+                if (File.Exists(adjacentPath)) return LoadFromAssemblyPath(adjacentPath);
 
                 return null;
             }
