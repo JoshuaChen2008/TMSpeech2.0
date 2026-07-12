@@ -228,12 +228,17 @@ dotnet run `
 生成 Windows x64 自包含发布包：
 
 ```powershell
+dotnet restore TMSpeech.sln -r win-x64
+
 dotnet publish src/TMSpeech/TMSpeech.csproj `
   -c Release `
   -r win-x64 `
   --self-contained true `
+  --no-restore `
   -o publish
 ```
+
+发布前需要按 `win-x64` 还原整个解决方案。内置插件由主项目的自定义构建目标单独编译，不属于主项目的常规项目引用；如果插件只按 `net6.0` 还原，发布时可能因缺少 `net6.0/win-x64` 资产而出现 `NETSDK1047`。`--no-restore` 用于确保发布阶段直接使用前一步生成的完整还原结果。
 
 ## 开发者文档
 
