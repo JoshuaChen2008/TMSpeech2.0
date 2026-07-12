@@ -28,6 +28,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TMSpeech.Recognizer.LLMAudi
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TMSpeech.Recognizer.StreamingAsr", "src\Plugins\TMSpeech.Recognizer.StreamingAsr\TMSpeech.Recognizer.StreamingAsr.csproj", "{F3A4B5C6-3333-4444-8555-666677778888}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TMSpeech.Core.RuntimeChecks", "tests\TMSpeech.Core.RuntimeChecks\TMSpeech.Core.RuntimeChecks.csproj", "{748AAA3F-7B9C-4C16-86E6-F0414FC4257F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -74,6 +76,10 @@ Global
 		{F3A4B5C6-3333-4444-8555-666677778888}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F3A4B5C6-3333-4444-8555-666677778888}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F3A4B5C6-3333-4444-8555-666677778888}.Release|Any CPU.Build.0 = Release|Any CPU
+		{748AAA3F-7B9C-4C16-86E6-F0414FC4257F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{748AAA3F-7B9C-4C16-86E6-F0414FC4257F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{748AAA3F-7B9C-4C16-86E6-F0414FC4257F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{748AAA3F-7B9C-4C16-86E6-F0414FC4257F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

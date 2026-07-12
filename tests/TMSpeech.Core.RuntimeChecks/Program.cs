@@ -8,6 +8,8 @@ using System.Text;
 
 try
 {
+    // This suite is an offline gate. Any protocol fixture must stay on loopback;
+    // external endpoints make the result non-deterministic and are not allowed.
     if (args.Length != 1 || args[0] != "all")
     {
         Console.Error.WriteLine("Usage: TMSpeech.Core.RuntimeChecks all");
