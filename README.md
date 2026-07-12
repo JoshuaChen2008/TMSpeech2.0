@@ -1,6 +1,7 @@
 # TMSpeech2.0
 
 面向 Windows 的实时语音字幕工具：把电脑声音、麦克风或指定进程的音频，交给本地模型、云端服务或自定义程序实时转换为文字。
+原项目为[TMSpeech](https://github.com/jxlpzqc/TMSpeech),基于TMSpeech 进行了优化，主要有：UI重构，增加ASR-LLM翻译功能等改进
 
 [下载最新版本](https://github.com/JoshuaChen2008/TMSpeech/releases) · [报告问题](https://github.com/JoshuaChen2008/TMSpeech/issues) · [参与讨论](https://github.com/JoshuaChen2008/TMSpeech/discussions)
 
