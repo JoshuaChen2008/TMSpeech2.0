@@ -18,8 +18,11 @@
       <Color x:Key="AppInputColor">#26000000</Color>
       <Color x:Key="AppHoverColor">#12FFFFFF</Color>
       <Color x:Key="AppNavSelectedColor">#2E83C3FF</Color>
+      <Color x:Key="AppLinkForegroundColor">#FF83C3FF</Color>
       <Color x:Key="AppGlassTintColor">#FF161B22</Color>
       <Color x:Key="AppGlassFallbackColor">#F2181D24</Color>
+      <x:Double x:Key="AppGlassTintOpacity">0.62</x:Double>
+      <x:Double x:Key="AppGlassMaterialOpacity">0.55</x:Double>
 
       <SolidColorBrush x:Key="AppBackgroundBrush" Color="{StaticResource AppBackgroundColor}" />
       <SolidColorBrush x:Key="AppForegroundBrush" Color="{StaticResource AppForegroundColor}" />
@@ -34,6 +37,7 @@
       <SolidColorBrush x:Key="AppInputBrush" Color="{StaticResource AppInputColor}" />
       <SolidColorBrush x:Key="AppHoverBrush" Color="{StaticResource AppHoverColor}" />
       <SolidColorBrush x:Key="AppNavSelectedBrush" Color="{StaticResource AppNavSelectedColor}" />
+      <SolidColorBrush x:Key="AppLinkForegroundBrush" Color="{StaticResource AppLinkForegroundColor}" />
 
       <!-- Fluent 主题接管：强调色与输入类控件底色 -->
       <Color x:Key="SystemAccentColor">#FF83C3FF</Color>
@@ -68,9 +72,15 @@
       <Color x:Key="AppBorderColor">#141A1C1F</Color>
       <Color x:Key="AppInputColor">#141A1C1F</Color>
       <Color x:Key="AppHoverColor">#0F1A1C1F</Color>
-      <Color x:Key="AppNavSelectedColor">#2E339CFF</Color>
+      <!-- 浅色下选中态用实色浅蓝（demo 的 accent），比半透明蓝更干净 -->
+      <Color x:Key="AppNavSelectedColor">#FFE5F2FF</Color>
+      <!-- 白底上链接/彩色文字需要更深的蓝以保证对比度 -->
+      <Color x:Key="AppLinkForegroundColor">#FF1B7FE0</Color>
       <Color x:Key="AppGlassTintColor">#FFF4F6FA</Color>
       <Color x:Key="AppGlassFallbackColor">#F2F4F6FA</Color>
+      <!-- 浅色桌面背景往往更花，玻璃要压得更实才能保住侧栏文字可读性 -->
+      <x:Double x:Key="AppGlassTintOpacity">0.80</x:Double>
+      <x:Double x:Key="AppGlassMaterialOpacity">0.72</x:Double>
 
       <SolidColorBrush x:Key="AppBackgroundBrush" Color="{StaticResource AppBackgroundColor}" />
       <SolidColorBrush x:Key="AppForegroundBrush" Color="{StaticResource AppForegroundColor}" />
@@ -85,6 +95,7 @@
       <SolidColorBrush x:Key="AppInputBrush" Color="{StaticResource AppInputColor}" />
       <SolidColorBrush x:Key="AppHoverBrush" Color="{StaticResource AppHoverColor}" />
       <SolidColorBrush x:Key="AppNavSelectedBrush" Color="{StaticResource AppNavSelectedColor}" />
+      <SolidColorBrush x:Key="AppLinkForegroundBrush" Color="{StaticResource AppLinkForegroundColor}" />
 
       <Color x:Key="SystemAccentColor">#FF339CFF</Color>
       <Color x:Key="SystemAccentColorDark1">#FF2286E4</Color>

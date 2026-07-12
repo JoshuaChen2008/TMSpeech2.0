@@ -29,6 +29,7 @@ public partial class App : Application
         AvaloniaXamlLoader.Load(this);
 
         ConfigManagerFactory.Init(DefaultConfig.GenerateConfig());
+        ThemeManager.ApplyFromConfig();
     }
 
     private MainWindow _mainWindow;

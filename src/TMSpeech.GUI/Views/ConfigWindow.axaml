@@ -63,8 +63,8 @@
         <ExperimentalAcrylicBorder.Material>
           <ExperimentalAcrylicMaterial BackgroundSource="Digger"
                                        TintColor="{DynamicResource AppGlassTintColor}"
-                                       TintOpacity="0.62"
-                                       MaterialOpacity="0.55"
+                                       TintOpacity="{DynamicResource AppGlassTintOpacity}"
+                                       MaterialOpacity="{DynamicResource AppGlassMaterialOpacity}"
                                        FallbackColor="{DynamicResource AppGlassFallbackColor}" />
         </ExperimentalAcrylicBorder.Material>
       </ExperimentalAcrylicBorder>
@@ -178,6 +178,8 @@
                   <TextBlock Classes="Small Muted" VerticalAlignment="Center">所有更改已自动保存</TextBlock>
                 </StackPanel>
                 <StackPanel Grid.Column="3" Orientation="Horizontal">
+                  <Button Classes="WindowButton" x:Name="btnTheme"
+                          Click="ThemeButton_OnClick" FontSize="12" />
                   <ToggleButton Classes="WindowButton"
                                 IsChecked="{Binding Topmost, ElementName=winConfig, Mode=TwoWay}"
                                 ToolTip.Tip="窗口置顶：普通窗口 / 保持在最上方">&#xE718;</ToggleButton>
@@ -595,7 +597,7 @@
                       <StackPanel Grid.Column="0" Spacing="4">
                         <TextBlock Text="sherpa-onnx" FontWeight="SemiBold" />
                         <TextBlock Classes="Small Muted" Text="Real-time speech recognition" TextWrapping="Wrap" />
-                        <TextBlock Classes="Small" Foreground="{DynamicResource AppPrimaryBrush}"
+                        <TextBlock Classes="Small" Foreground="{DynamicResource AppLinkForegroundBrush}"
                                    Text="https://k2-fsa.github.io/sherpa/" TextWrapping="Wrap" />
                       </StackPanel>
                       <StackPanel Grid.Column="2" Spacing="4">
@@ -603,7 +605,7 @@
                         <TextBlock Classes="Small Muted"
                                    Text="An open source .NET audio library written by Mark Heath"
                                    TextWrapping="Wrap" />
-                        <TextBlock Classes="Small" Foreground="{DynamicResource AppPrimaryBrush}"
+                        <TextBlock Classes="Small" Foreground="{DynamicResource AppLinkForegroundBrush}"
                                    Text="https://github.com/naudio/NAudio" TextWrapping="Wrap" />
                       </StackPanel>
                     </Grid>

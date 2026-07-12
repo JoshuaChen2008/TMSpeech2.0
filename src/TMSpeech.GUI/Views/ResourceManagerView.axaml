@@ -38,7 +38,7 @@
                           Background="{DynamicResource AppAccentBrush}"
                           Padding="10,4" VerticalAlignment="Center">
                     <TextBlock Text="已安装" Classes="Small"
-                               Foreground="{DynamicResource AppPrimaryBrush}" />
+                               Foreground="{DynamicResource AppLinkForegroundBrush}" />
                   </Border>
                   <Button Classes="Primary" IsVisible="{Binding IsInstallButtonShown}"
                           Command="{Binding InstallCommand}"

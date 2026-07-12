@@ -11,6 +11,15 @@ public static class GeneralConfigTypes
     public const string ResultLogPath = "general.ResultLogPath";
     public const string MainWindowLocation = "general.MainWindowLocation";
 
+    /// <summary>界面主题：system 跟随系统 / light 浅色 / dark 深色。</summary>
+    public const string Theme = "general.Theme";
+
+    public static class ThemeEnum
+    {
+        public const string System = "system";
+        public const string Light = "light";
+        public const string Dark = "dark";
+    }
 
     private static Dictionary<string, object> _defaultConfig => new()
     {
@@ -19,7 +28,8 @@ public static class GeneralConfigTypes
         { StartOnLaunch, true },
         { AutoUpdate, true },
         { ResultLogPath, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "TMSpeechLogs") },
-        { MainWindowLocation, new List<int>() }
+        { MainWindowLocation, new List<int>() },
+        { Theme, ThemeEnum.System }
     };
 
     public static Dictionary<string, object> DefaultConfig => _defaultConfig;

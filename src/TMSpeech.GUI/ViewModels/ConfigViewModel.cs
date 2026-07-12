@@ -198,6 +198,11 @@ namespace TMSpeech.GUI.ViewModels
         [ConfigJsonValue]
         public string ResultLogPath { get; set; }
 
+        /// <summary>界面主题：system / light / dark，见 GeneralConfigTypes.ThemeEnum。</summary>
+        [Reactive]
+        [ConfigJsonValue]
+        public string Theme { get; set; } = GeneralConfigTypes.ThemeEnum.System;
+
         [Reactive]
         [ConfigJsonValue]
         public bool LaunchOnStartup { get; set; }
