@@ -11,6 +11,15 @@ public static class GeneralConfigTypes
     public const string ResultLogPath = "general.ResultLogPath";
     public const string MainWindowLocation = "general.MainWindowLocation";
 
+    /// <summary>界面主题：system 跟随系统 / light 浅色 / dark 深色。</summary>
+    public const string Theme = "general.Theme";
+
+    public static class ThemeEnum
+    {
+        public const string System = "system";
+        public const string Light = "light";
+        public const string Dark = "dark";
+    }
 
     private static Dictionary<string, object> _defaultConfig => new()
     {
@@ -19,7 +28,8 @@ public static class GeneralConfigTypes
         { StartOnLaunch, true },
         { AutoUpdate, true },
         { ResultLogPath, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "TMSpeechLogs") },
-        { MainWindowLocation, new List<int>() }
+        { MainWindowLocation, new List<int>() },
+        { Theme, ThemeEnum.System }
     };
 
     public static Dictionary<string, object> DefaultConfig => _defaultConfig;
@@ -86,6 +96,38 @@ public static class NotificationConfigTypes
     public static Dictionary<string, object> DefaultConfig => _defaultConfig;
 }
 
+/// <summary>锁定字幕后悬浮控制条的配置：锁定后仍可点击哪些按钮，由用户自行选择。</summary>
+public static class LockConfigTypes
+{
+    public const string SectionName = "lock";
+
+    /// <summary>锁定后是否显示悬浮控制条（总开关）。</summary>
+    public const string ShowControlBar = "lock.ShowControlBar";
+
+    /// <summary>控制条中显示"解锁"按钮。</summary>
+    public const string ShowUnlock = "lock.ShowUnlock";
+
+    /// <summary>控制条中显示"开始/停止识别"按钮。</summary>
+    public const string ShowPlayStop = "lock.ShowPlayStop";
+
+    /// <summary>控制条中显示"重启识别"按钮。</summary>
+    public const string ShowRestart = "lock.ShowRestart";
+
+    /// <summary>控制条中显示"退出程序"按钮。</summary>
+    public const string ShowExit = "lock.ShowExit";
+
+    private static Dictionary<string, object> _defaultConfig => new()
+    {
+        { ShowControlBar, true },
+        { ShowUnlock, true },
+        { ShowPlayStop, true },
+        { ShowRestart, true },
+        { ShowExit, false }
+    };
+
+    public static Dictionary<string, object> DefaultConfig => _defaultConfig;
+}
+
 public static class AudioSourceConfigTypes
 {
     public const string SectionName = "audio";
@@ -103,6 +145,12 @@ public static class RecognizerConfigTypes
     public const string SectionName = "recognizer";
 
     public const string Recognizer = "recognizer.source";
+
+    /// <summary>命名引擎实例（Engine Profile）列表，存为 JSON 字符串。</summary>
+    public const string Profiles = "recognizer.profiles";
+
+    /// <summary>当前选中的引擎实例名称。</summary>
+    public const string ActiveProfile = "recognizer.activeProfile";
 
     public static string GetPluginConfigKey(string pluginId)
     {

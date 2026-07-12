@@ -1,114 +1,254 @@
-# TMSpeech
+# TMSpeech2.0
 
-(旧版)视频演示：https://www.bilibili.com/video/BV1rX4y1p7Nx/
+面向 Windows 的实时语音字幕工具：把电脑声音、麦克风或指定进程的音频，交给本地模型、云端服务或自定义程序实时转换为文字。
 
-关键词：语音转文字，实时字幕，会议语音识别，歌词字幕展示，识别历史记录查看
+[下载最新版本](https://github.com/JoshuaChen2008/TMSpeech/releases) · [报告问题](https://github.com/JoshuaChen2008/TMSpeech/issues) · [参与讨论](https://github.com/JoshuaChen2008/TMSpeech/discussions)
 
-`TMSpeech` 是一个Windows下的中文实时语音字幕，通过WASAPI的CaptureLoopback捕获电脑声音（录内音），将语音实时转文字，并以歌词字幕的形式展示。即使完全关闭电脑声音也能使用。
+> TMSpeech2.0 基于 [jxlpzqc/TMSpeech](https://github.com/jxlpzqc/TMSpeech) 二次开发。新版仓库由 `JoshuaChen2008` 维护；模型与插件社区继续使用上游的 [TMSpeechCommunity](https://github.com/jxlpzqc/TMSpeechCommunity)。
 
-你可以：
-- 开会时更放心地走神，突然被喊到的时候不会那么不知所措，只需要看一看识别的历史记录。（本项目的名字来源于此）
-- 会议实时转录，自动生成会议纪要，并保存到文件。默认会将识别结果按日期保存到“我的文档”的`TMSpeechLogs`文件夹中
+## 它能做什么
 
-基于[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx/)项目的语音识别框架和模型二次开发。实测在我的AMD 5800u的笔记本上CPU占用不到5%。
+TMSpeech2.0 可以捕获电脑正在播放的声音、麦克风输入，或指定进程的音频，并通过本地模型、云端语音服务或自定义程序实时转换为文字。识别结果会显示在可自由调整的置顶字幕窗口中，也可以保存到日志并在历史记录窗口中查看。
 
-## 展示
+它适合在线会议、课程与直播字幕、视频内容转写、听力辅助，以及需要持续回看语音内容的场景。
 
-无边框窗口，可任意拖动和调整大小
+你也可以：
 
-![正常识别窗口](imgs/main.png)
+- 开会时更放心地走神——突然被喊到时，先打开识别记录看看刚才说了什么。这也是 TMSpeech 这个名字最初的由来。
+- 为网课、视频或直播生成实时字幕。
+- 把会议转录保存成带时间的文本，方便之后整理纪要。
+- 用本地模型保护隐私，或接入云端服务获得更多模型选择。
 
-历史记录页面（可右键或者Ctrl-C复制）：
+## 主要功能
 
-![历史记录页面](imgs/history.png)
+### 多种音频来源
 
-设置页面：
+- **系统音频**：捕获电脑正在播放的全部声音，适合在线会议、课程、视频和直播。
+- **麦克风输入**：选择当前可用的麦克风设备，实时识别自己或现场声音。
+- **指定进程音频**：只捕获选定进程及其子进程的音频，减少其他应用声音造成的干扰。
 
-![设置页面](imgs/settings.png)
+使用系统回环采集时，调低或关闭扬声器音量通常不会影响识别；具体行为仍可能受到播放设备、播放器静音方式和音频驱动影响。
 
-切换为命令行识别器：
+### 本地、云端与扩展识别
 
-![设置页面](imgs/setting-change-recognizer.png)
+| 类型 | 识别器 | 适合场景 |
+| --- | --- | --- |
+| 本地识别 | Sherpa-ONNX | 使用本地模型，音频无需上传，适合重视隐私和离线使用的场景 |
+| 本地识别 | Sherpa-NCNN | 另一种本地推理方案，适合已经准备好兼容模型的用户 |
+| 阿里云 | NLS 实时语音识别 | 接入阿里云智能语音交互，需要开通服务并配置相应凭据 |
+| 阿里云 | DashScope Fun-ASR / Paraformer | 接入阿里云百炼实时语音识别，需要 API Key |
+| 通用流式 ASR | Streaming ASR | 内置阿里云 Fun-ASR、NLS 和 OpenAI Realtime 预设，也可配置兼容协议 |
+| 外部程序 | 命令行识别器 | 启动用户指定的程序，将标准输出作为实时字幕 |
 
-## 使用
+想完全离线运行，可以选择 Sherpa 系列；不想自己准备本地模型，可以接入云端服务；有自己的识别脚本或其他 WebSocket ASR 服务，也可以通过通用流式 ASR 或命令行识别器接进来。
 
-在[Release](https://github.com/jxlpzqc/TMSpeech/releases)页面中下载最新的release解压，运行`TMSpeech.exe`即可。在桌面创建快捷方式，使用起来更加方便。出现问题后可以运行重置配置的bat脚本，删除现有配置文件。
+识别效果会受到模型、语言、音频质量和服务配置影响，建议根据自己的场景实际测试。
 
-## 基于自定义外部命令的识别
+### 看得清，也尽量不挡事
 
-在设置中选用“命令行识别器”。它基于程序和参数，启动子进程，并将标准输出（stdout）作为字幕格式识别，将标准错误输出（stderr）作为日志文件记录（都使用UTF-8编码）。
+字幕窗口默认置顶，可以自由拖动和调整大小。需要专心看视频或开会时，可以锁定字幕窗口并启用鼠标穿透，避免误触。
 
-使用单个换行（'\n'）更新当前句子，使用多个换行（'\n\n'）表示当前行识别结束，样例输出如下：
+锁定后仍可按需显示一条小型悬浮工具栏，并自行选择保留哪些操作：
 
-```
-一二
-一二三四
-一二三四五六七
+- 解锁字幕
+- 开始或停止识别
+- 重启识别
+- 退出程序
 
-七六
-七六五四
-七六五四三二一
+显示设置带有实时预览，可以调整字体、字号、文字对齐、字体与背景颜色、阴影大小与颜色，以及鼠标悬停时的背景颜色。字幕太小看不清、背景太亮，或者总是不小心点到窗口？调好以后锁住字幕，它就能安静地待在屏幕上了。
 
-```
+### 识别记录、日志与提醒
 
-参考python代码如下：
+识别完成的句子会出现在历史记录窗口中，可以拖动选择文本，并通过右键菜单复制或全选。
 
-```diff
-+ class MyPrinter:
-+     def __init__(self):
-+         self.prev_result = ""
-+ 
-+     def do_print(self, result):
-+         if result and self.prev_result != result:
-+             self.prev_result = result
-+             print(result, end='\n', flush=True)
-+ 
-+     def on_endpoint(self):
-+         print("\n", end="", flush=True)
-+ 
-+     printer = MyPrinter()
-    with sd.InputStream(channels=1, dtype="float32", samplerate=sample_rate, device=device) as s:
-        while True:
-            samples, _ = s.read(samples_per_read)  # a blocking read
-            samples = samples.reshape(-1)
-            stream.accept_waveform(sample_rate, samples)
-            while recognizer.is_ready(stream):
-                recognizer.decode_stream(stream)
-            is_endpoint = recognizer.is_endpoint(stream)
-            result = recognizer.get_result(stream)
+每次开始识别时，TMSpeech2.0 会创建一份带时间戳的文本日志，默认保存在：
 
-+           printer.do_print(result)
-            if is_endpoint:
-+               if result:
-+                   printer.on_endpoint()
-                recognizer.reset(stream)
+```text
+我的文档\TMSpeechLogs
 ```
 
-注意事项：
+日志目录可以在设置中修改；将目录留空则不保存识别日志。
 
-1. 单个换行结尾的行是临时结果，只有多个换行结尾的行才会被存储到历史记录中，这种方式允许模型在后面纠正前面的识别结果。
-1. 基于该方式需要子进程独立获取语音源。在设置中切换语音源将不会生效。
-1. 程序接受多个参数时，使用空格分割，如果参数本身包含空格，比如带有空格的路径，则可能会出现问题，需要通过双引号转义。详见[这里](https://stackoverflow.com/questions/15061854/how-to-pass-multiple-arguments-in-processstartinfo)和[这里](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.processstartinfo.arguments?view=net-10.0)
-1. 程序指定为批处理脚本（'.bat'）时，记得前面加上@隐藏命令显示，同时不要在结尾加入`pause`这种命令（无法检测命令的退出）。
+通知功能支持：
 
-    ```bat
-    @python ./speech-recognition-from-microphone-with-endpoint-detection.py
-    ```
+- 开启或关闭系统通知。
+- 设置一个或多个关注词，以逗号或换行分隔。
+- 当实时识别结果包含关注词时发出提醒。
+- 在启动失败、插件异常或日志写入失败时显示错误提示。
 
+README 中的“关注词”对应设置页面里的“敏感词”。
 
-## 我们需要你的反馈
+### 插件与资源管理
 
-觉得很有用？但是还有不完美的地方？欢迎点击这里[创建Discussion](https://github.com/jxlpzqc/TMSpeech/discussions/new)、提出反馈！
+TMSpeech2.0 将音频源和语音识别器作为独立插件加载。切换插件后，设置页面会根据插件提供的配置项显示对应参数。简单来说，你可以像更换“耳朵”和“识别大脑”一样，自由组合音频源与识别器。
 
-- 识别准确率不高？
-    - 这可能需要更好的模型。当前我们支持sherpa-onnx的流式模型，可以在[这里](https://k2-fsa.github.io/sherpa/onnx/pretrained_models/online-transducer/zipformer-transducer-models.html)下载其他模型，并在设置中修改模型路径。
-    - [想要用自己的模型？](https://github.com/jxlpzqc/TMSpeech/issues/6) 如果你发现了效果更好的开源模型，也欢迎推荐给我们！
-- 还需要更多功能？
-    - 请点击这里[创建issue](https://github.com/jxlpzqc/TMSpeech/issues/new)告诉我们！
-    - 如果你懂Windows/C#开发，欢迎提交pull request，开发的过程中遇到任何问题可以创建issue和我们讨论。
+“资源管理”页面可以：
 
-## 带模型的Release打包流程
+- 查看本地和远程资源。
+- 下载并安装模型、插件和其他可选资源。
+- 暂停或继续下载，并查看安装进度。
+- 检查可用更新。
+- 移除允许卸载的资源。
 
-- 在github actions中下载构建好的安装包
-- 放入正确的模型文件夹。放入正确的default_config.json，对应上当前的识别器。
-- 打包为zip文件，在开发电脑，和另外一台电脑上测试各种功能。
+下载远程资源需要网络连接。随程序发布的内置插件可能不允许直接移除；用户安装的资源通常可以管理或卸载。欢迎在 [TMSpeechCommunity](https://github.com/jxlpzqc/TMSpeechCommunity) 贡献模型和插件。
+
+## 界面预览
+
+### 字幕窗口
+
+![TMSpeech2.0 字幕窗口](imgs/main.png)
+
+### 识别记录
+
+![TMSpeech2.0 识别记录](imgs/history.png)
+
+旧版视频演示：[哔哩哔哩 BV1rX4y1p7Nx](https://www.bilibili.com/video/BV1rX4y1p7Nx/)（界面和功能可能与 TMSpeech2.0 不同）。
+
+## 安装与首次运行
+
+### 系统要求
+
+- Windows 10 版本 1809（内部版本 17763）或更高。
+- 64 位 Windows。
+- 使用云端识别器或下载资源时需要网络连接。
+- 使用本地识别器时需要准备对应模型，并预留足够磁盘空间。
+
+Release 发布包为 Windows x64 自包含版本，正常情况下无需单独安装 .NET Runtime。
+
+### 安装
+
+1. 前往 [Releases](https://github.com/JoshuaChen2008/TMSpeech/releases) 下载最新的 `TMSpeech.win-x64.zip`。
+2. 解压到一个可长期保留的文件夹，不要直接在压缩包内运行。
+3. 双击 `TMSpeech.exe`。
+4. 如有需要，可以为程序创建桌面快捷方式。
+
+### 第一次使用
+
+1. 打开“设置 → 音频源”，选择系统音频、麦克风或指定进程。
+2. 打开“设置 → 语音识别”，选择识别器并填写必要参数。
+3. 本地识别器需要选择模型文件；云端识别器需要配置相应凭据。
+4. 回到字幕窗口，点击“开始识别”。
+5. 如果希望打开软件后自动工作，可以开启“启动后开始识别”。
+
+第一次打开没立刻出现字幕并不一定是坏了——先给它选好“耳朵”（音频源）和“大脑”（识别器），然后再开始识别。
+
+## 通用流式 ASR
+
+“通用流式语音识别”用于把 TMSpeech2.0 接入支持实时 WebSocket 音频传输的 ASR 服务，目前内置：
+
+- 阿里云 Fun-ASR（百炼）
+- 阿里云 NLS
+- OpenAI Realtime（实验性）
+- 自定义协议 JSON
+
+选择预设后，设置界面会动态显示该服务需要的 API Key、模型、区域、AppKey 或 AccessKey 等参数。普通用户选好预设并填写凭据即可；“自定义协议 JSON”主要面向需要适配其他服务的开发者。
+
+协议结构和扩展方式参见[通用流式 ASR 协议解耦设计](docs/Streaming-ASR-Protocol-Design.md)。
+
+### 凭据安全
+
+API Key、AccessKey 等凭据会保存在本机配置文件中。密码字段在界面中会隐藏显示，但配置文件本身没有加密。
+
+- 不要截图或分享包含凭据的设置页面。
+- 不要提交或分享 `%APPDATA%\TMSpeech\config.json`。
+- 怀疑凭据泄露时，请立即在对应服务商后台轮换或撤销。
+- 使用云服务可能产生费用，具体以服务商计费规则为准。
+
+## 自定义命令行识别器
+
+如果你已经有自己的 Python、C++ 或其他语音识别程序，可以让 TMSpeech2.0 启动它，并读取其标准输出作为字幕。
+
+可以配置命令路径、命令参数、工作目录和 `stderr` 日志保存位置。外部程序必须使用 UTF-8 输出，并遵循以下规则：
+
+- 输出文字后加一个换行：更新当前临时字幕。
+- 连续输出两个换行：确认当前句子，并将它加入历史记录和日志。
+- `stderr`：用于输出诊断或错误信息；配置日志路径后，TMSpeech2.0 会将其保存下来。
+
+例如：
+
+```text
+今天
+今天天气
+今天天气不错
+
+下一句话
+下一句话开始了
+
+```
+
+精简的 Python 输出辅助类：
+
+```python
+class SubtitlePrinter:
+    def update(self, text):
+        print(text, flush=True)
+
+    def finish(self):
+        print(flush=True)
+```
+
+注意：
+
+- 命令行识别器不会使用 TMSpeech2.0 中选择的音频源，外部程序需要自行采集音频。
+- 路径或参数包含空格时需要正确加引号。
+- 批处理脚本不要在结尾使用 `pause`。
+- 停止识别时，TMSpeech2.0 会结束该外部进程及其子进程。
+- 如果外部程序异常退出，请检查配置的 `stderr` 日志。
+
+## 从源码构建
+
+开发环境要求：
+
+- Windows 10/11 x64
+- Git
+- .NET SDK `10.0.301`（与仓库的 `global.json` 一致）
+
+```powershell
+git clone https://github.com/JoshuaChen2008/TMSpeech.git
+cd TMSpeech
+
+dotnet restore
+dotnet build TMSpeech.sln -c Release
+```
+
+运行离线行为检查：
+
+```powershell
+dotnet run `
+  --project tests/TMSpeech.Core.RuntimeChecks/TMSpeech.Core.RuntimeChecks.csproj `
+  --no-restore -- all
+```
+
+生成 Windows x64 自包含发布包：
+
+```powershell
+dotnet publish src/TMSpeech/TMSpeech.csproj `
+  -c Release `
+  -r win-x64 `
+  --self-contained true `
+  -o publish
+```
+
+## 开发者文档
+
+- [开发与 Release 流程](Develop.md)
+- [模块与代码职责](docs/CodeMap.md)
+- [插件、资源、配置和数据流](docs/Process.md)
+- [TMSpeech2.0 本地改动迁移记录](docs/Migration-2026-07-11.md)
+- [通用流式 ASR 协议解耦设计](docs/Streaming-ASR-Protocol-Design.md)
+- [贡献者工作规范](AGENTS.md)
+
+## 反馈与贡献
+
+觉得很有用，但还有不顺手的地方？欢迎：
+
+- 在 [Issues](https://github.com/JoshuaChen2008/TMSpeech/issues) 报告问题或提出功能建议。
+- 在 [Discussions](https://github.com/JoshuaChen2008/TMSpeech/discussions) 分享使用体验和模型推荐。
+- 通过 Pull Request 改进代码或文档。
+- 在 [TMSpeechCommunity](https://github.com/jxlpzqc/TMSpeechCommunity) 贡献兼容模型与插件资源。
+
+提交问题时，请尽量附上复现步骤、系统版本、所用音频源和识别器。请先删除日志、截图或配置文件中的 API Key、AccessKey 等敏感信息。
+
+## 开源许可
+
+本项目采用 [MIT License](LICENSE)。TMSpeech2.0 基于原 TMSpeech 项目继续开发，并保留原作者版权与许可证说明。

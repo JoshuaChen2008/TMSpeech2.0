@@ -9,7 +9,7 @@ namespace TMSpeech.Core.AutoUpdate;
 class UpdateInfo
 {
     public long Version { get; set; }
-    public string NewFeature { get; set; }
+    public string NewFeature { get; set; } = "";
 }
 
 class AutoUpdateManager

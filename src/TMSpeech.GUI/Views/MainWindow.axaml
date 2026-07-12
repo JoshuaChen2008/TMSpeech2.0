@@ -31,18 +31,22 @@
     </ResourceDictionary>
   </Window.Resources>
   <Window.Styles>
-    <Style Selector="Grid">
+    <Style Selector="Grid#mainGrid">
       <Setter Property="Background" Value="{Binding CaptionStyle.BackgroundColor, Converter={StaticResource ColorToBrushConverter}}" />
     </Style>
-    <Style Selector="Grid:pointerover">
-      <!-- <Setter Property="Background" Value="#AAA9CEFF" /> -->
+    <Style Selector="Grid#mainGrid:pointerover">
       <Setter Property="Background"
               Value="{Binding CaptionStyle.MouseHover, Converter={StaticResource ColorToBrushConverter}}" />
     </Style>
-    <Style Selector="Grid StackPanel#controls">
+    <Style Selector="Grid#mainGrid Border#controls">
       <Setter Property="Opacity" Value="0" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
+        </Transitions>
+      </Setter>
     </Style>
-    <Style Selector="Grid:pointerover StackPanel#controls">
+    <Style Selector="Grid#mainGrid:pointerover Border#controls">
       <Setter Property="Opacity" Value="1" />
     </Style>
   </Window.Styles>
@@ -52,44 +56,71 @@
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
 
-    <StackPanel Name="controls" HorizontalAlignment="Center" Orientation="Horizontal" Grid.Row="0" Margin="8">
-      <StackPanel.Styles>
+    <!-- 悬浮控制条：胶囊玻璃风格 -->
+    <Border Name="controls" Grid.Row="0" HorizontalAlignment="Center" Margin="0,10,0,0"
+            CornerRadius="999" Padding="6,4"
+            Background="#E01D232C"
+            BorderBrush="#26FFFFFF" BorderThickness="1">
+      <Border.Styles>
         <Style Selector="PathIcon">
-          <Setter Property="Height" Value="16" />
-          <Setter Property="Width" Value="16" />
+          <Setter Property="Height" Value="15" />
+          <Setter Property="Width" Value="15" />
+          <Setter Property="Foreground" Value="#F2FFFFFF" />
         </Style>
         <Style Selector="Button">
-          <Setter Property="Height" Value="32" />
+          <Setter Property="Height" Value="30" />
+          <Setter Property="Width" Value="36" />
+          <Setter Property="Padding" Value="0" />
+          <Setter Property="CornerRadius" Value="999" />
+          <Setter Property="Background" Value="Transparent" />
+          <Setter Property="BorderThickness" Value="0" />
+          <Setter Property="HorizontalContentAlignment" Value="Center" />
+          <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
-      </StackPanel.Styles>
-      <Button IsVisible="{Binding PlayButtonVisible}" Command="{Binding PlayCommand}">
-        <PathIcon Data="{StaticResource play_regular}"></PathIcon>
-      </Button>
-      <!-- <Button IsVisible="{Binding PauseButtonVisible}" Command="{Binding PauseCommand}">
-        <PathIcon Data="{StaticResource pause_regular}"></PathIcon>
-      </Button> -->
-      <Button IsVisible="{Binding StopButtonVisible}" Command="{Binding StopCommand}">
-        <PathIcon Data="{StaticResource stop_regular}"></PathIcon>
-      </Button>
-      <Button IsVisible="{Binding StopButtonVisible}">
-        <StackPanel Orientation="Horizontal">
-          <PathIcon Data="{StaticResource record_regular}" Margin="0,0,8,0" Foreground="DarkRed"></PathIcon>
-          <TextBlock Text="{Binding RunningTimeDisplay}"></TextBlock>
-        </StackPanel>
-      </Button>
-      <Button Click="HistoryButton_Click" Margin="16,0,0,0">
-        <PathIcon Data="{StaticResource history_regular}"></PathIcon>
-      </Button>
-      <!-- <Button> -->
-      <!--   <PathIcon Data="{StaticResource list_regular}"></PathIcon> -->
-      <!-- </Button> -->
-      <Button Command="{Binding LockCommand}">
-        <PathIcon Data="{StaticResource lock_regular}"></PathIcon>
-      </Button>
-      <Button Click="SettingsButton_Click">
-        <PathIcon Data="{StaticResource settings_regular}"></PathIcon>
-      </Button>
-    </StackPanel>
+        <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+          <Setter Property="Background" Value="#24FFFFFF" />
+        </Style>
+        <Style Selector="Border.BarSeparator">
+          <Setter Property="Width" Value="1" />
+          <Setter Property="Height" Value="16" />
+          <Setter Property="Margin" Value="5,0" />
+          <Setter Property="VerticalAlignment" Value="Center" />
+          <Setter Property="Background" Value="#2EFFFFFF" />
+        </Style>
+      </Border.Styles>
+      <StackPanel Orientation="Horizontal" Spacing="2">
+        <Button IsVisible="{Binding PlayButtonVisible}" Command="{Binding PlayCommand}"
+                ToolTip.Tip="开始识别">
+          <PathIcon Data="{StaticResource play_regular}" />
+        </Button>
+        <Button IsVisible="{Binding StopButtonVisible}" Command="{Binding StopCommand}"
+                ToolTip.Tip="停止识别">
+          <PathIcon Data="{StaticResource stop_regular}" />
+        </Button>
+        <Border IsVisible="{Binding StopButtonVisible}" CornerRadius="999"
+                Background="#33FF5545" Padding="10,0" Margin="2,0" VerticalAlignment="Stretch">
+          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <PathIcon Data="{StaticResource record_regular}" Width="10" Height="10" Foreground="#FFFF6B5E" />
+            <TextBlock Text="{Binding RunningTimeDisplay}" FontSize="12"
+                       Foreground="#F2FFFFFF" VerticalAlignment="Center" />
+          </StackPanel>
+        </Border>
+        <Border Classes="BarSeparator" />
+        <Button Click="HistoryButton_Click" ToolTip.Tip="识别记录">
+          <PathIcon Data="{StaticResource history_regular}" />
+        </Button>
+        <Button Command="{Binding LockCommand}" ToolTip.Tip="锁定字幕">
+          <PathIcon Data="{StaticResource lock_regular}" />
+        </Button>
+        <Button Click="SettingsButton_Click" ToolTip.Tip="设置">
+          <PathIcon Data="{StaticResource settings_regular}" />
+        </Button>
+        <Border Classes="BarSeparator" />
+        <Button Command="{Binding ExitCommand}" ToolTip.Tip="退出 TMSpeech">
+          <PathIcon Data="{StaticResource dismiss_regular}" />
+        </Button>
+      </StackPanel>
+    </Border>
     <views:CaptionView Grid.Row="1" Margin="16"
                        FontWeight="Bold"
                        FontColor="{Binding CaptionStyle.FontColor}"

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\TMSpeech.Core\TMSpeech.Core.csproj" />
+    <ProjectReference Include="..\..\src\Plugins\TMSpeech.Recognizer.LLMAudio\TMSpeech.Recognizer.LLMAudio.csproj" />
+    <ProjectReference Include="..\..\src\TMSpeech.StreamingAsr.Core\TMSpeech.StreamingAsr.Core.csproj" />
+    <ProjectReference Include="..\..\src\Plugins\TMSpeech.Recognizer.AliyunCloud\TMSpeech.Recognizer.AliyunCloud.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+</Project>

@@ -20,7 +20,7 @@ public enum DownloadStatus
 
 public class DownloadItem
 {
-    public Resource Resource { get; set; }
+    public Resource Resource { get; set; } = null!;
     public DownloadStatus Status { get; set; }
     public bool IsWorking => Status is DownloadStatus.Downloading or DownloadStatus.Installing;
 
@@ -61,7 +61,7 @@ public class DownloadManager
 
     public void StartJob(Resource resource)
     {
-        Task.Run(() =>
+        _ = Task.Run(async () =>
         {
             if (!_tasks.ContainsKey(resource.ID)) return;
             DownloadItem task = _tasks[resource.ID];
@@ -87,7 +87,14 @@ public class DownloadManager
                 }
             }
 
-            DoJob(task);
+            try
+            {
+                await DoJob(task);
+            }
+            catch (Exception ex)
+            {
+                UpdateJobStatus(task, DownloadStatus.Failed, ex);
+            }
         });
     }
 
@@ -97,7 +104,7 @@ public class DownloadManager
         {
             var task = _tasks[resource.ID];
             if (task.Status != DownloadStatus.Downloading) return;
-            task._service.Pause();
+            task._service?.Pause();
             task.Status = DownloadStatus.Paused;
             NotifyDownloadStatus(task);
             Monitor.Pulse(_tasks);
@@ -128,7 +135,7 @@ public class DownloadManager
 
     private async Task DoExtract(DownloadItem task)
     {
-        var currrentStep = task.Resource.ModuleInfo.InstallSteps[task._step];
+        var currrentStep = task.Resource.ModuleInfo.InstallSteps![task._step];
         task.IsIndeterminate = true;
         UpdateJobStatus(task, DownloadStatus.Installing);
         await Task.Run(() =>
@@ -152,10 +159,10 @@ public class DownloadManager
             {
                 if (!reader.Entry.IsDirectory)
                 {
-                    var filename = reader.Entry.Key;
+                    var filename = reader.Entry.Key ?? throw new InvalidDataException("Archive entry has no path");
                     filename = Path.Combine(extractDest, filename);
                     var dir = Path.GetDirectoryName(filename);
-                    if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                    if (dir != null && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
                     reader.WriteEntryToFile(filename, new ExtractionOptions
                     {
                         ExtractFullPath = true,
@@ -176,15 +183,16 @@ public class DownloadManager
         });
     }
 
-    private async Task DoWriteFile(DownloadItem task)
+    private Task DoWriteFile(DownloadItem task)
     {
         task.IsIndeterminate = true;
         UpdateJobStatus(task, DownloadStatus.Installing);
-        var currrentStep = task.Resource.ModuleInfo.InstallSteps[task._step];
-        File.WriteAllText(currrentStep.WritePath, currrentStep.WriteContent);
+        var currrentStep = task.Resource.ModuleInfo.InstallSteps![task._step];
+        File.WriteAllText(currrentStep.WritePath ?? throw new InvalidDataException("writePath is required"), currrentStep.WriteContent);
+        return Task.CompletedTask;
     }
 
-    private void UpdateJobStatus(DownloadItem task, DownloadStatus newStatus, Exception ex = null)
+    private void UpdateJobStatus(DownloadItem task, DownloadStatus newStatus, Exception? ex = null)
     {
         lock (_tasks)
         {
@@ -292,7 +300,8 @@ public class DownloadManager
             task._service = null;
             t.SetResult();
         };
-        task._service.DownloadProgressChanged += (sender, args) =>
+        var service = task._service!;
+        service.DownloadProgressChanged += (sender, args) =>
         {
             task.Finished = args.ReceivedBytesSize;
             task.Total = args.TotalBytesToReceive;
@@ -300,9 +309,9 @@ public class DownloadManager
             NotifyDownloadStatus(task);
         };
 
-        var downloadUrl = task.Resource.ModuleInfo.InstallSteps[task._step].DownloadURL;
+        var downloadUrl = task.Resource.ModuleInfo.InstallSteps![task._step].DownloadURL;
 
-        task._service.DownloadFileTaskAsync(downloadUrl,
+        _ = service.DownloadFileTaskAsync(downloadUrl ?? throw new InvalidDataException("Download URL is required"),
             GetDownloadingFileName(task.Resource, task._step));
         task.Status = DownloadStatus.Downloading;
         NotifyDownloadStatus(task);
@@ -311,11 +320,11 @@ public class DownloadManager
 
     private readonly int _maxDownloadSize = 3;
 
-    public event EventHandler<DownloadItem> DownloadStatusUpdated;
+    public event EventHandler<DownloadItem>? DownloadStatusUpdated;
 
     private void NotifyDownloadStatus(DownloadItem item)
     {
-        DownloadStatusUpdated.Invoke(this, item);
+        DownloadStatusUpdated?.Invoke(this, item);
     }
 
     internal DownloadManager()

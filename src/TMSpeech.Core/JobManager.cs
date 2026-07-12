@@ -38,10 +38,10 @@ namespace TMSpeech.Core
 
         public long RunningSeconds { get; protected set; }
 
-        public event EventHandler<JobStatus> StatusChanged;
-        public event EventHandler<SpeechEventArgs> TextChanged;
-        public event EventHandler<SpeechEventArgs> SentenceDone;
-        public event EventHandler<long> RunningSecondsChanged;
+        public event EventHandler<JobStatus>? StatusChanged;
+        public event EventHandler<SpeechEventArgs>? TextChanged;
+        public event EventHandler<SpeechEventArgs>? SentenceDone;
+        public event EventHandler<long>? RunningSecondsChanged;
 
         protected void OnTextChanged(SpeechEventArgs e) => TextChanged?.Invoke(this, e);
         protected void OnSentenceDone(SpeechEventArgs e) => SentenceDone?.Invoke(this, e);
@@ -58,18 +58,28 @@ namespace TMSpeech.Core
 
 
         internal JobManagerImpl()
+            : this(PluginManagerFactory.GetInstance())
         {
-            _pluginManager = PluginManagerFactory.GetInstance();
+        }
+
+        internal JobManagerImpl(PluginManager pluginManager)
+        {
+            _pluginManager = pluginManager;
         }
 
         private IAudioSource? _audioSource;
         private IRecognizer? _recognizer;
-        private HashSet<string> _sensitiveWords;
+        private HashSet<string> _sensitiveWords = new();
         private bool _disableInThisSentence = false;
-        private string logFile;
+        private string logFile = "";
         private string currentText = "";
+        private readonly PluginFailureStopCoordinator _failureStopCoordinator = new();
+        private readonly object _lifecycleLock = new();
+        private readonly SessionLifecycle _lifecycle = new();
+        private EventHandler<Exception>? _audioSourceExceptionHandler;
+        private EventHandler<Exception>? _recognizerExceptionHandler;
 
-        private void InitAudioSource()
+        private void InitAudioSource(long generation)
         {
             var configAudioSource = ConfigManagerFactory.Instance.Get<string>(AudioSourceConfigTypes.AudioSource);
             var config = ConfigManagerFactory.Instance.Get<string>(AudioSourceConfigTypes.GetPluginConfigKey(configAudioSource));
@@ -80,8 +90,8 @@ namespace TMSpeech.Core
                 _audioSource.LoadConfig(config);
                 _audioSource.DataAvailable -= OnAudioSourceOnDataAvailable;
                 _audioSource.DataAvailable += OnAudioSourceOnDataAvailable;
-                _audioSource.ExceptionOccured -= OnPluginRunningExceptionOccurs;
-                _audioSource.ExceptionOccured += OnPluginRunningExceptionOccurs;
+                _audioSourceExceptionHandler = (sender, ex) => OnPluginRunningExceptionOccurs(sender, ex, generation);
+                _audioSource.ExceptionOccured += _audioSourceExceptionHandler;
             }
         }
 
@@ -94,7 +104,7 @@ namespace TMSpeech.Core
             _recognizer?.Feed(data);
         }
 
-        private void InitRecognizer()
+        private void InitRecognizer(long generation)
         {
             var configRecognizer = ConfigManagerFactory.Instance.Get<string>(RecognizerConfigTypes.Recognizer);
             var config = ConfigManagerFactory.Instance.Get<string>(RecognizerConfigTypes.GetPluginConfigKey(configRecognizer));
@@ -103,7 +113,7 @@ namespace TMSpeech.Core
             {
                 configRecognizer = _pluginManager.Recognizers.Keys.First();
             }
-            _recognizer = _pluginManager.Recognizers[configRecognizer];
+            _recognizer = _pluginManager.Recognizers[configRecognizer!];
 
             if (_recognizer != null)
             {
@@ -114,8 +124,8 @@ namespace TMSpeech.Core
                 _recognizer.TextChanged += OnRecognizerOnTextChanged;
                 _recognizer.SentenceDone -= OnRecognizerOnSentenceDone;
                 _recognizer.SentenceDone += OnRecognizerOnSentenceDone;
-                _recognizer.ExceptionOccured -= OnPluginRunningExceptionOccurs;
-                _recognizer.ExceptionOccured += OnPluginRunningExceptionOccurs;
+                _recognizerExceptionHandler = (sender, ex) => OnPluginRunningExceptionOccurs(sender, ex, generation);
+                _recognizer.ExceptionOccured += _recognizerExceptionHandler;
             }
         }
 
@@ -161,17 +171,16 @@ namespace TMSpeech.Core
             OnTextChanged(args);
         }
 
-        private void StartRecognize()
+        private bool StartRecognize(long generation)
         {
             InitSensitiveWords();
-            InitAudioSource();
-            InitRecognizer();
+            InitAudioSource(generation);
+            InitRecognizer(generation);
 
             if (_audioSource == null || _recognizer == null)
             {
-                Status = JobStatus.Stopped;
                 NotificationManager.Instance.Notify("语音源或识别器初始化失败", "语音源或识别器为空！", NotificationType.Error);
-                return;
+                return false;
             }
 
 
@@ -183,13 +192,13 @@ namespace TMSpeech.Core
             {
                 NotificationManager.Instance.Notify($"识别器启动失败：\n{ex.Message}", "启动失败",
                     NotificationType.Error);
-                return;
+                return false;
             }
             catch (Exception ex)
             {
                 NotificationManager.Instance.Notify($"识别器启动失败：\n{ex.Message}\n{ex.StackTrace}", "启动失败",
                     NotificationType.Error);
-                return;
+                return false;
             }
 
             try
@@ -198,17 +207,15 @@ namespace TMSpeech.Core
             }
             catch (InvalidOperationException ex)
             {
-                _recognizer?.Stop();
                 NotificationManager.Instance.Notify($"语音源启动失败：\n{ex.Message}", "启动失败",
                     NotificationType.Error);
-                return;
+                return false;
             }
             catch (Exception ex)
             {
-                _recognizer?.Stop();
                 NotificationManager.Instance.Notify($"语音源启动失败：\n{ex.Message}\n{ex.StackTrace}", "启动失败",
                     NotificationType.Error);
-                return;
+                return false;
             }
 
             var logPath = ConfigManagerFactory.Instance.Get<string>(GeneralConfigTypes.ResultLogPath).Trim();
@@ -221,11 +228,7 @@ namespace TMSpeech.Core
                 logFile = "";
             }
 
-            if (Status == JobStatus.Stopped) RunningSeconds = 0;
-
-            Status = JobStatus.Running;
-
-            _timer = new Timer(TimerCallback, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+            return true;
         }
 
         private void InitSensitiveWords()
@@ -241,12 +244,25 @@ namespace TMSpeech.Core
                 StringSplitOptions.RemoveEmptyEntries));
         }
 
-        private void OnPluginRunningExceptionOccurs(object? e, Exception ex)
+        private void OnPluginRunningExceptionOccurs(object? e, Exception ex, long generation)
         {
             NotificationManager.Instance.Notify($"插件运行异常:\n ({e?.GetType().Module.Name})：{ex.Message}",
                 "插件异常", NotificationType.Error);
-            // 只能在主线程stop。
-            // Stop();
+
+            // 插件异常通常由其后台收发任务触发。不要在该回调线程中同步 Stop，
+            // 否则插件清理代码可能等待当前任务结束而形成自等待。
+            // 收发两端可能同时上报同一故障，因此只排队一次统一清理。
+            _failureStopCoordinator.TrySchedule(generation, () => StopFailedSession(generation));
+        }
+
+        private void StopFailedSession(long generation)
+        {
+            lock (_lifecycleLock)
+            {
+                if (!_lifecycle.IsCurrent(generation)) return;
+                _lifecycle.BeginStop();
+                StopCore();
+            }
         }
 
 
@@ -261,11 +277,19 @@ namespace TMSpeech.Core
             try
             {
                 _audioSource?.Stop();
+            }
+            catch (Exception ex)
+            {
+                NotificationManager.Instance.Notify($"停止语音源失败：\n{ex.Message}", "停止失败", NotificationType.Fatal);
+            }
+
+            try
+            {
                 _recognizer?.Stop();
             }
             catch (Exception ex)
             {
-                NotificationManager.Instance.Notify($"停止失败：\n{ex.Message}", "停止失败", NotificationType.Fatal);
+                NotificationManager.Instance.Notify($"停止识别器失败：\n{ex.Message}", "停止失败", NotificationType.Fatal);
             }
 
             if (currentText != null && currentText.Length > 0)
@@ -274,37 +298,93 @@ namespace TMSpeech.Core
                 currentText = "";
             }
 
-            _audioSource.DataAvailable -= OnAudioSourceOnDataAvailable;
-            _audioSource.ExceptionOccured -= OnPluginRunningExceptionOccurs;
+            if (_audioSource != null)
+            {
+                _audioSource.DataAvailable -= OnAudioSourceOnDataAvailable;
+                if (_audioSourceExceptionHandler != null)
+                    _audioSource.ExceptionOccured -= _audioSourceExceptionHandler;
+            }
 
-            _recognizer.TextChanged -= OnRecognizerOnTextChanged;
-            _recognizer.SentenceDone -= OnRecognizerOnSentenceDone;
-            _recognizer.ExceptionOccured -= OnPluginRunningExceptionOccurs;
+            if (_recognizer != null)
+            {
+                _recognizer.TextChanged -= OnRecognizerOnTextChanged;
+                _recognizer.SentenceDone -= OnRecognizerOnSentenceDone;
+                if (_recognizerExceptionHandler != null)
+                    _recognizer.ExceptionOccured -= _recognizerExceptionHandler;
+            }
 
 
             _audioSource = null;
             _recognizer = null;
+            _audioSourceExceptionHandler = null;
+            _recognizerExceptionHandler = null;
         }
 
         public override void Start()
         {
-            if (Status == JobStatus.Running) return;
-            StartRecognize();
+            lock (_lifecycleLock)
+            {
+                if (Status == JobStatus.Running) return;
+                var generation = _lifecycle.BeginStart();
+                try
+                {
+                    if (!StartRecognize(generation) || !_lifecycle.TryMarkRunning(generation))
+                    {
+                        RollBackStart();
+                        return;
+                    }
+
+                    if (Status == JobStatus.Stopped) RunningSeconds = 0;
+                    _timer = new Timer(TimerCallback, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+                    Status = JobStatus.Running;
+                }
+                catch (Exception ex)
+                {
+                    NotificationManager.Instance.Notify($"会话初始化失败：\n{ex.Message}", "启动失败",
+                        NotificationType.Error);
+                    RollBackStart();
+                }
+            }
+        }
+
+        private void RollBackStart()
+        {
+            _lifecycle.BeginStop();
+            StopRecognize();
+            _timer?.Dispose();
+            _timer = null;
+            _lifecycle.MarkStopped();
+            Status = JobStatus.Stopped;
         }
 
         public override void Pause()
         {
-            if (Status == JobStatus.Running) StopRecognize();
-            Status = JobStatus.Paused;
+            lock (_lifecycleLock)
+            {
+                _lifecycle.BeginStop();
+                if (Status == JobStatus.Running) StopRecognize();
+                _lifecycle.MarkPaused();
+                Status = JobStatus.Paused;
 
-            _timer?.Dispose();
-            _timer = null;
+                _timer?.Dispose();
+                _timer = null;
+            }
         }
 
         public override void Stop()
         {
+            lock (_lifecycleLock)
+            {
+                _lifecycle.BeginStop();
+                StopCore();
+            }
+        }
+
+        private void StopCore()
+        {
             if (Status == JobStatus.Running) StopRecognize();
             Status = JobStatus.Stopped;
+            _lifecycle.MarkStopped();
 
             // Clear text when stopped
             var emptyTextArg = new SpeechEventArgs();

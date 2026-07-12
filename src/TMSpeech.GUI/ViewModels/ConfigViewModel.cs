@@ -156,12 +156,14 @@ namespace TMSpeech.GUI.ViewModels
         public AudioSectionConfigViewModel AudioSectionConfig { get; } = new AudioSectionConfigViewModel();
         public RecognizeSectionConfigViewModel RecognizeSectionConfig { get; } = new RecognizeSectionConfigViewModel();
         public NotificationConfigViewModel NotificationConfig { get; } = new NotificationConfigViewModel();
+        public LockSectionConfigViewModel LockSectionConfig { get; } = new LockSectionConfigViewModel();
 
         [ObservableAsProperty]
         public bool IsNotRunning { get; }
 
+        // 页签索引：0 通用 / 1 通知 / 2 显示与字幕 / 3 音频源 / 4 语音识别 / 5 资源管理 / 6 关于
         [Reactive]
-        public int CurrentTab { get; set; } = 1;
+        public int CurrentTab { get; set; } = 2;
 
         public ConfigViewModel()
         {
@@ -196,6 +198,11 @@ namespace TMSpeech.GUI.ViewModels
         [ConfigJsonValue]
         public string ResultLogPath { get; set; }
 
+        /// <summary>界面主题：system / light / dark，见 GeneralConfigTypes.ThemeEnum。</summary>
+        [Reactive]
+        [ConfigJsonValue]
+        public string Theme { get; set; } = GeneralConfigTypes.ThemeEnum.System;
+
         [Reactive]
         [ConfigJsonValue]
         public bool LaunchOnStartup { get; set; }
@@ -212,6 +219,32 @@ namespace TMSpeech.GUI.ViewModels
         [Reactive]
         [ConfigJsonValue]
         public List<int> MainWindowLocation { get; set; } = [];
+    }
+
+    /// <summary>锁定字幕后悬浮控制条的设置：显示哪些按钮由用户选择。</summary>
+    public class LockSectionConfigViewModel : SectionConfigViewModelBase
+    {
+        protected override string SectionName => LockConfigTypes.SectionName;
+
+        [Reactive]
+        [ConfigJsonValue]
+        public bool ShowControlBar { get; set; } = true;
+
+        [Reactive]
+        [ConfigJsonValue]
+        public bool ShowUnlock { get; set; } = true;
+
+        [Reactive]
+        [ConfigJsonValue]
+        public bool ShowPlayStop { get; set; } = true;
+
+        [Reactive]
+        [ConfigJsonValue]
+        public bool ShowRestart { get; set; } = true;
+
+        [Reactive]
+        [ConfigJsonValue]
+        public bool ShowExit { get; set; }
     }
 
     public class AppearanceSectionConfigViewModel : SectionConfigViewModelBase
@@ -262,9 +295,20 @@ namespace TMSpeech.GUI.ViewModels
             new KeyValuePair<int, string>(AppearanceConfigTypes.TextAlignEnum.Justify, "两端对齐"),
         ];
 
+        /// <summary>恢复本节全部设置为默认值。</summary>
+        public ReactiveCommand<Unit, Unit> ResetCommand { get; }
+
         public AppearanceSectionConfigViewModel()
         {
             FontsAvailable = FontManager.Current.SystemFonts.ToList();
+            ResetCommand = ReactiveCommand.Create(() =>
+            {
+                var defaults = DefaultConfig.GenerateConfig()
+                    .Where(x => ConfigManager.IsInSection(x.Key, SectionName))
+                    .ToDictionary(x => x.Key, x => x.Value);
+                ConfigManagerFactory.Instance.BatchApply(defaults);
+                Load();
+            });
         }
     }
 
@@ -308,6 +352,7 @@ namespace TMSpeech.GUI.ViewModels
 
         public IReadOnlyDictionary<string, Core.Plugins.IAudioSource> Refresh()
         {
+            try { App.PluginsLoadTask.Wait(TimeSpan.FromSeconds(15)); } catch { }
             var plugins = Core.Plugins.PluginManagerFactory.GetInstance().AudioSources;
             if (AudioSource == "" && plugins.Count >= 1)
                 AudioSource = plugins.First().Key;
@@ -342,7 +387,12 @@ namespace TMSpeech.GUI.ViewModels
         public AudioSectionConfigViewModel()
         {
             this.RefreshCommand = ReactiveCommand.Create(() => { });
-            this.RefreshCommand.Merge(Observable.Return(Unit.Default))
+            // 插件后台加载完成后自动补一次刷新，避免窗口开得太早时列表为空
+            var pluginsReady = Observable.FromAsync(async () =>
+            {
+                try { await App.PluginsLoadTask; } catch { }
+            });
+            this.RefreshCommand.Merge(Observable.Return(Unit.Default)).Merge(pluginsReady)
                 .SelectMany(u => Observable.FromAsync(() => Task.Run(() => Refresh())))
                 .ToPropertyEx(this, x => x.AudioSourcesAvailable);
 
@@ -411,6 +461,7 @@ namespace TMSpeech.GUI.ViewModels
 
         public IReadOnlyDictionary<string, Core.Plugins.IRecognizer> Refresh()
         {
+            try { App.PluginsLoadTask.Wait(TimeSpan.FromSeconds(15)); } catch { }
             var plugins = Core.Plugins.PluginManagerFactory.GetInstance().Recognizers;
             if (Recognizer == "" && plugins.Count >= 1)
                 Recognizer = plugins.First().Key;
@@ -445,7 +496,12 @@ namespace TMSpeech.GUI.ViewModels
         public RecognizeSectionConfigViewModel()
         {
             this.RefreshCommand = ReactiveCommand.Create(() => { });
-            this.RefreshCommand.Merge(Observable.Return(Unit.Default))
+            // 插件后台加载完成后自动补一次刷新，避免窗口开得太早时列表为空
+            var pluginsReady = Observable.FromAsync(async () =>
+            {
+                try { await App.PluginsLoadTask; } catch { }
+            });
+            this.RefreshCommand.Merge(Observable.Return(Unit.Default)).Merge(pluginsReady)
                 .SelectMany(u => Observable.FromAsync(() => Task.Run(() => Refresh())))
                 .ToPropertyEx(this, x => x.RecognizersAvailable);
 

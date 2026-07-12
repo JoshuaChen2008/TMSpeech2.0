@@ -18,10 +18,11 @@ public class PluginConfigView : UserControl
 
     public PluginConfigView()
     {
+        // 标签列 Auto：按最长标签自适应，避免“编码器参数文件”等长标签被截断
         _container = new AutoGrid()
         {
             RowCount = 100,
-            ColumnDefinitions = new ColumnDefinitions("100,*"),
+            ColumnDefinitions = new ColumnDefinitions("Auto,*"),
         };
         this.Content = _container;
     }
@@ -79,6 +80,14 @@ public class PluginConfigView : UserControl
                     case ComboBox cb:
                         cb.SelectedValue = value;
                         break;
+                    case NumericUpDown nud:
+                        try { nud.Value = Convert.ToDecimal(value); }
+                        catch { nud.Value = null; }
+                        break;
+                    case CheckBox chk:
+                        try { chk.IsChecked = Convert.ToBoolean(value); }
+                        catch { chk.IsChecked = false; }
+                        break;
                 }
             }
         }
@@ -94,6 +103,8 @@ public class PluginConfigView : UserControl
             var label = new Label()
             {
                 Content = formItem.Name,
+                Margin = new Thickness(0, 5, 14, 5),
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
             };
             _container.Children.Add(label);
             Control control;
@@ -153,6 +164,62 @@ public class PluginConfigView : UserControl
                 };
                 control = cb;
             }
+            else if (formItem is PluginConfigFormItemPassword)
+            {
+                var tb = new TextBox()
+                {
+                    Tag = formItem.Key,
+                    PasswordChar = '●', // ●
+                };
+                tb.TextChanged += (_, _) =>
+                {
+                    if (_updateMode != UpdateMode.ViewToBoth) return;
+
+                    ConfigEditor.SetValue(formItem.Key, tb.Text);
+                    UpdateValueAndNotify();
+                };
+                control = tb;
+            }
+            else if (formItem is PluginConfigFormItemNumber numberFormItem)
+            {
+                var nud = new NumericUpDown()
+                {
+                    Tag = numberFormItem.Key,
+                    Increment = 1,
+                    FormatString = numberFormItem.IsInteger ? "0" : "0.##",
+                };
+                if (numberFormItem.Min.HasValue) nud.Minimum = numberFormItem.Min.Value;
+                if (numberFormItem.Max.HasValue) nud.Maximum = numberFormItem.Max.Value;
+                nud.ValueChanged += (_, _) =>
+                {
+                    if (_updateMode != UpdateMode.ViewToBoth) return;
+
+                    object val = numberFormItem.IsInteger
+                        ? (object)(int)(nud.Value ?? 0)
+                        : (object)(double)(nud.Value ?? 0);
+                    ConfigEditor.SetValue(formItem.Key, val);
+                    UpdateValueAndNotify();
+                };
+                control = nud;
+            }
+            else if (formItem is PluginConfigFormCheckBox)
+            {
+                var chk = new CheckBox()
+                {
+                    Tag = formItem.Key,
+                };
+                void OnCheckChanged(object? _, Avalonia.Interactivity.RoutedEventArgs __)
+                {
+                    if (_updateMode != UpdateMode.ViewToBoth) return;
+
+                    ConfigEditor.SetValue(formItem.Key, chk.IsChecked ?? false);
+                    UpdateValueAndNotify();
+                }
+
+                chk.Checked += OnCheckChanged;
+                chk.Unchecked += OnCheckChanged;
+                control = chk;
+            }
             else
             {
                 control = new Label()
@@ -162,6 +229,7 @@ public class PluginConfigView : UserControl
                 };
             }
 
+            control.Margin = new Thickness(0, 5);
             _container.Children.Add(control);
         }
     }

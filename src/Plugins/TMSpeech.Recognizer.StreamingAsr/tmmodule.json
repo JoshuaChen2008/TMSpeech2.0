@@ -1,0 +1,11 @@
+{
+  "id": "TMSpeech.Recognizer.StreamingAsr",
+  "version": 1,
+  "desc": "数据驱动的通用流式语音识别（内置阿里云 Fun-ASR / NLS / OpenAI Realtime 预设）",
+  "displayVersion": "1.0.0",
+  "name": "通用流式语音识别",
+  "apiLevel": 1,
+  "assemblies": [
+    "TMSpeech.Recognizer.StreamingAsr.dll"
+  ]
+}

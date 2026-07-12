@@ -21,13 +21,13 @@ public class Resource
 {
     public bool CanRemove { get; set; } = true;
     public ModuleInfo? LocalInfo { get; set; }
-    public string LocalDir { get; set; }
+    public string? LocalDir { get; set; }
     public ModuleInfo? RemoteInfo { get; set; }
 
     public ModuleInfo ModuleInfo => (RemoteInfo ?? LocalInfo)!;
     public string ID => ModuleInfo.ID;
     public string Name => ModuleInfo.Name;
-    public string Desc => ModuleInfo.Desc;
+    public string Desc => ModuleInfo.Desc ?? "";
     public bool IsPlugin => ModuleInfo.Type == ModuleInfoTypeEnums.Plugin;
     public bool IsLocal => LocalInfo != null;
     public bool NeedUpdate => (RemoteInfo != null && LocalInfo != null) && RemoteInfo.Version > LocalInfo.Version;
@@ -79,12 +79,12 @@ public class ResourceManager
             await RealGetLocalResources();
         }
 
-        return _localCache;
+        return _localCache!;
     }
 
     private async Task RealGetLocalResources()
     {
-        var execuatblePath = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), PluginDirName);
+        var execuatblePath = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? AppContext.BaseDirectory, PluginDirName);
         var userdatadir = Path.Combine(ConfigManagerFactory.Instance.UserDataDir, PluginDirName);
         if (!Directory.Exists(execuatblePath)) Directory.CreateDirectory(execuatblePath);
         if (!Directory.Exists(userdatadir)) Directory.CreateDirectory(userdatadir);
@@ -110,20 +110,50 @@ public class ResourceManager
 
                 ret.Add(new Resource
                 {
-                    LocalInfo = moduleInfo,
+                    LocalInfo = moduleInfo ?? throw new JsonException("Module metadata is null"),
                     LocalDir = dir,
                     CanRemove = canRemove
                 });
             }
         }
 
-        _localCache = ret;
-        _localCacheDict = ret.ToDictionary(x => x.ID, x => x);
+        _localCache = DeduplicateResources(ret, message => Debug.WriteLine(message));
+        _localCacheDict = _localCache.ToDictionary(x => x.ID, x => x);
     }
 
-    public async Task RemoveResource(Resource resource)
+    internal static IList<Resource> DeduplicateResources(
+        IEnumerable<Resource> resources,
+        Action<string>? reportConflict = null)
     {
-        if (!resource.CanRemove || resource.LocalDir == null) return;
+        var unique = new List<Resource>();
+        var byId = new Dictionary<string, Resource>(StringComparer.Ordinal);
+
+        foreach (var resource in resources)
+        {
+            var id = resource.ID;
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                reportConflict?.Invoke($"忽略 ID 为空的资源：{resource.LocalDir ?? "<remote>"}");
+                continue;
+            }
+
+            if (byId.TryGetValue(id, out var existing))
+            {
+                reportConflict?.Invoke(
+                    $"忽略重复资源 ID '{id}'。保留：{existing.LocalDir ?? "<remote>"}；冲突：{resource.LocalDir ?? "<remote>"}");
+                continue;
+            }
+
+            byId.Add(id, resource);
+            unique.Add(resource);
+        }
+
+        return unique;
+    }
+
+    public Task RemoveResource(Resource resource)
+    {
+        if (!resource.CanRemove || resource.LocalDir == null) return Task.CompletedTask;
 
         try
         {
@@ -157,6 +187,7 @@ public class ResourceManager
                 Notification.NotificationType.Error);
             Debug.WriteLine($"Exception removing resource: {ex.Message}");
         }
+        return Task.CompletedTask;
     }
 
     private class MarketPlace
@@ -165,7 +196,7 @@ public class ResourceManager
         public int Version { get; set; }
 
         [JsonPropertyName("modules")]
-        public IList<ModuleInfo> Modules { get; set; }
+        public IList<ModuleInfo> Modules { get; set; } = new List<ModuleInfo>();
     }
 
     private async Task<IList<Resource>> GetRemoteResources()

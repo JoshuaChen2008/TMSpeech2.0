@@ -67,11 +67,12 @@ namespace TMSpeech.Core.Plugins
                 Debug.WriteLine($"Unhandled exception: {e.ExceptionObject}");
                 if (e.ExceptionObject is Exception ex)
                 {
-                    var execuatblePath = Assembly.GetEntryAssembly().Location;
-                    var pluginPath = Path.Combine(Path.GetDirectoryName(execuatblePath), "plugins");
-                    if (Path.GetDirectoryName(ex.TargetSite.Module.FullyQualifiedName).Contains(pluginPath))
+                    var executablePath = Assembly.GetEntryAssembly()?.Location ?? AppContext.BaseDirectory;
+                    var pluginPath = Path.Combine(Path.GetDirectoryName(executablePath) ?? AppContext.BaseDirectory, "plugins");
+                    var failurePath = ex.TargetSite?.Module.FullyQualifiedName;
+                    if (failurePath != null && (Path.GetDirectoryName(failurePath)?.Contains(pluginPath) ?? false))
                     {
-                        Debug.WriteLine($"Meet unhandled exception in plugin {ex.TargetSite.Module.Name}");
+                        Debug.WriteLine($"Meet unhandled exception in plugin {ex.TargetSite?.Module.Name}");
                         Debug.WriteLine($"Kill process now and disable this plugin next startup");
                     }
 
@@ -113,6 +114,7 @@ namespace TMSpeech.Core.Plugins
         class PluginLoadContext : AssemblyLoadContext
         {
             private AssemblyDependencyResolver _resolver;
+            private readonly string _pluginDirectory;
             private string? _runtimesNativePath = null;
 
             private string GetRuntimeIdentifier()
@@ -135,19 +137,26 @@ namespace TMSpeech.Core.Plugins
             public PluginLoadContext(string pluginPath)
             {
                 _resolver = new AssemblyDependencyResolver(pluginPath);
-                var nativeRuntimes = Path.Combine(Path.GetDirectoryName(pluginPath), "runtimes", GetRuntimeIdentifier(),
+                _pluginDirectory = Path.GetDirectoryName(pluginPath)!;
+                var nativeRuntimes = Path.Combine(_pluginDirectory, "runtimes", GetRuntimeIdentifier(),
                     "native");
-                if (!Directory.Exists(nativeRuntimes)) _runtimesNativePath = nativeRuntimes;
+                if (Directory.Exists(nativeRuntimes)) _runtimesNativePath = nativeRuntimes;
             }
 
-            protected override Assembly Load(AssemblyName assemblyName)
+            protected override Assembly? Load(AssemblyName assemblyName)
             {
                 if (assemblyName.Name == "TMSpeech.Core") return null;
-                string assemblyPath = _resolver.ResolveAssemblyToPath(assemblyName);
+                string? assemblyPath = _resolver.ResolveAssemblyToPath(assemblyName);
                 if (assemblyPath != null)
                 {
                     return LoadFromAssemblyPath(assemblyPath);
                 }
+
+                // Dynamic-loading projects can omit project references from the
+                // plugin deps.json. Resolve managed companions shipped beside the
+                // plugin entry assembly before falling back to the default context.
+                var adjacentPath = Path.Combine(_pluginDirectory, $"{assemblyName.Name}.dll");
+                if (File.Exists(adjacentPath)) return LoadFromAssemblyPath(adjacentPath);
 
                 return null;
             }
@@ -174,7 +183,7 @@ namespace TMSpeech.Core.Plugins
                         if (File.Exists(libPath)) return LoadUnmanagedDllFromPath(libPath);
                         libPath = Path.Combine(_runtimesNativePath, $"lib{unmanagedDllName}.dylib");
                         if (File.Exists(libPath)) return LoadUnmanagedDllFromPath(libPath);
-                        return LoadUnmanagedDllFromPath(libraryPath);
+                        return IntPtr.Zero;
                     }
                     catch
                     {
@@ -187,8 +196,8 @@ namespace TMSpeech.Core.Plugins
 
         public override void LoadPlugins()
         {
-            var executablePath = Assembly.GetEntryAssembly().Location;
-            var pluginPath = Path.Combine(Path.GetDirectoryName(executablePath), "plugins");
+            var executablePath = Assembly.GetEntryAssembly()?.Location ?? AppContext.BaseDirectory;
+            var pluginPath = Path.Combine(Path.GetDirectoryName(executablePath) ?? AppContext.BaseDirectory, "plugins");
 
 
             foreach (var dir in Directory.GetDirectories(pluginPath))
@@ -197,7 +206,7 @@ namespace TMSpeech.Core.Plugins
                 if (File.Exists(jsonFileName))
                 {
                     string moduleJson = File.ReadAllText(jsonFileName);
-                    ModuleInfo moduleInfo;
+                    ModuleInfo? moduleInfo;
                     try
                     {
                         moduleInfo = JsonSerializer.Deserialize<ModuleInfo>(moduleJson);
@@ -209,6 +218,7 @@ namespace TMSpeech.Core.Plugins
                         continue;
                     }
 
+                    if (moduleInfo?.Assemblies == null) continue;
                     foreach (var assembly in moduleInfo.Assemblies)
                     {
                         var assemblyPath = Path.Combine(dir, assembly);

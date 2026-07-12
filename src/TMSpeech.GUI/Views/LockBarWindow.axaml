@@ -1,0 +1,74 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:TMSpeech.GUI.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        x:Class="TMSpeech.GUI.Views.LockBarWindow"
+        Title="TMSpeech Lock Bar"
+        SystemDecorations="None"
+        ShowInTaskbar="False"
+        Topmost="True"
+        CanResize="False"
+        ShowActivated="False"
+        SizeToContent="WidthAndHeight"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        Opacity="0.35">
+  <Design.DataContext>
+    <vm:MainViewModel />
+  </Design.DataContext>
+  <Window.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="/IconResources.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Window.Resources>
+  <Window.Styles>
+    <Style Selector="Button">
+      <Setter Property="Height" Value="28" />
+      <Setter Property="Width" Value="32" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="1" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="999" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#24FFFFFF" />
+    </Style>
+    <Style Selector="PathIcon">
+      <Setter Property="Height" Value="13" />
+      <Setter Property="Width" Value="13" />
+      <Setter Property="Foreground" Value="#F2FFFFFF" />
+    </Style>
+  </Window.Styles>
+  <Border CornerRadius="999" Background="#E01D232C"
+          BorderBrush="#26FFFFFF" BorderThickness="1" Padding="4,3">
+    <StackPanel Orientation="Horizontal">
+      <Button IsVisible="{Binding LockBarUnlockVisible}" Command="{Binding UnlockCommand}"
+              ToolTip.Tip="解锁字幕">
+        <PathIcon Data="{StaticResource lock_regular}" />
+      </Button>
+      <Button IsVisible="{Binding LockBarPlayVisible}" Command="{Binding PlayCommand}"
+              ToolTip.Tip="开始识别">
+        <PathIcon Data="{StaticResource play_regular}" />
+      </Button>
+      <Button IsVisible="{Binding LockBarStopVisible}" Command="{Binding StopCommand}"
+              ToolTip.Tip="停止识别">
+        <PathIcon Data="{StaticResource stop_regular}" />
+      </Button>
+      <Button IsVisible="{Binding LockBarRestartVisible}" Command="{Binding RestartCommand}"
+              ToolTip.Tip="重启识别">
+        <PathIcon Data="{StaticResource restart_regular}" />
+      </Button>
+      <Button IsVisible="{Binding LockBarExitVisible}" Command="{Binding ExitCommand}"
+              ToolTip.Tip="退出 TMSpeech">
+        <PathIcon Data="{StaticResource dismiss_regular}" />
+      </Button>
+    </StackPanel>
+  </Border>
+</Window>

@@ -61,7 +61,15 @@
 
 
   <PropertyGroup>
-    <BuildPlugins>true</BuildPlugins>
+    <!--
+      The solution already builds every plugin project. Building them again from
+      this project's AfterTargets=Build target creates duplicate nested MSBuild
+      work and can leave a large number of worker processes behind when a build
+      is interrupted. Keep the existing behavior for direct project builds, but
+      skip the nested pass when MSBuild is building the solution.
+    -->
+    <BuildPlugins Condition="'$(BuildPlugins)' == '' and '$(BuildingSolutionFile)' != 'true'">true</BuildPlugins>
+    <BuildPlugins Condition="'$(BuildPlugins)' == ''">false</BuildPlugins>
     <PluginsOutputDir>plugins\</PluginsOutputDir>
     <SelfContained>true</SelfContained>
   </PropertyGroup>
@@ -87,9 +95,10 @@
     </ConvertToAbsolutePath>
     <Message Importance="high" Text="Found built-in plugins: @(PluginProjects, ', ')" />
     <Message Importance="high" Text="Building plugins to $(PluginsOutputDirAbs)" />
-    <MSBuild Projects="@(PluginProjects)" Targets="Build" Properties="OutDir=$(PluginsOutputDirAbs)\%(OutPutDir)" />
+    <RemoveDir Directories="$(PluginsOutputDirAbs)" Condition="Exists('$(PluginsOutputDirAbs)')" />
+    <MSBuild Projects="@(PluginProjects)" Targets="Build" BuildInParallel="false" Properties="OutDir=$(PluginsOutputDirAbs)\%(OutPutDir);BuildPlugins=false" />
     <ItemGroup>
-      <FilesToDelete Include="$(PluginsOutputDirAbs)\TMSpeech.Core.*" />
+      <FilesToDelete Include="$(PluginsOutputDirAbs)\**\TMSpeech.Core.dll;$(PluginsOutputDirAbs)\**\TMSpeech.Core.pdb" />
     </ItemGroup>
     <Delete Files="@(FilesToDelete)"/>
   </Target>
@@ -102,7 +111,12 @@
       <Output TaskParameter="AbsolutePaths" PropertyName="PublishPluginDir" />
     </ConvertToAbsolutePath>
     <Message Importance="high" Text="Copy plugins..." />
+    <RemoveDir Directories="$(PublishPluginDir)" Condition="Exists('$(PublishPluginDir)')" />
     <Exec Command="xcopy &quot;$(BuildPluginDir)&quot; &quot;$(PublishPluginDir)&quot; /E /Y /I /Q" />
+    <ItemGroup>
+      <PublishedCoreDuplicates Include="$(PublishPluginDir)\**\TMSpeech.Core.dll;$(PublishPluginDir)\**\TMSpeech.Core.pdb" />
+    </ItemGroup>
+    <Delete Files="@(PublishedCoreDuplicates)" />
   </Target>
     
 </Project>

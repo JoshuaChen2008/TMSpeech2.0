@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reactive;
-using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using ReactiveUI;
@@ -146,8 +146,8 @@ public class ResourceManagerViewModel : ViewModelBase
     [ObservableAsProperty]
     public bool Loading { get; }
 
-    [ObservableAsProperty]
-    public string LoadMessage { get; }
+    [Reactive]
+    public string LoadMessage { get; private set; } = "";
 
     public ReactiveCommand<Unit, Unit> LoadCommand { get; }
 
@@ -163,9 +163,16 @@ public class ResourceManagerViewModel : ViewModelBase
     {
         LoadCommand = ReactiveCommand.CreateFromTask(Load);
         LoadCommand.IsExecuting.ToPropertyEx(this, x => x.Loading);
-        LoadCommand.ThrownExceptions.Select(u => u.Message)
-            .ToPropertyEx(this, x => x.LoadMessage);
+        LoadCommand.ThrownExceptions
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(ex =>
+            {
+                Debug.WriteLine($"资源加载失败：{ex}");
+                LoadMessage = ex.GetBaseException().Message;
+            });
 
-        LoadCommand.Execute().SubscribeOn(Scheduler.Default).Subscribe();
+        LoadCommand.Execute().Subscribe(
+            _ => { },
+            ex => Debug.WriteLine($"资源加载命令执行失败：{ex}"));
     }
 }

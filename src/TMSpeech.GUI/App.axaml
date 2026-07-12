@@ -4,14 +4,19 @@
              x:Class="TMSpeech.GUI.App"
              x:Name="app"
              RequestedThemeVariant="Default">
-  <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
   <Application.Styles>
     <FluentTheme />
     <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml" />
+    <StyleInclude Source="/Styles/Glass.axaml" />
   </Application.Styles>
   <Application.Resources>
-    <FontFamily x:Key="GlobalFontFamily">微软雅黑,Microsoft YaHei,苹方-简</FontFamily>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="/Styles/Tokens.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+      <FontFamily x:Key="GlobalFontFamily">微软雅黑,Microsoft YaHei,苹方-简</FontFamily>
+    </ResourceDictionary>
   </Application.Resources>
 
 

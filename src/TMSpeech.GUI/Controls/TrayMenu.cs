@@ -25,6 +25,12 @@ public class TrayMenu : NativeMenu
                 { Header = "解锁字幕", Command = ReactiveCommand.Create(UnlockCaption) });
         }
 
+        // 识别控制：无需解锁即可开始/停止/重启
+        this.Items.Add(new NativeMenuItem { Header = "开始识别", Command = _mainWindow.ViewModel.PlayCommand });
+        this.Items.Add(new NativeMenuItem { Header = "停止识别", Command = _mainWindow.ViewModel.StopCommand });
+        this.Items.Add(new NativeMenuItem { Header = "重启识别", Command = _mainWindow.ViewModel.RestartCommand });
+        this.Items.Add(new NativeMenuItemSeparator());
+
         this.Items.Add(new NativeMenuItem { Header = "重置窗口位置", Command = ReactiveCommand.Create(ResetWindowLocation) });
         this.Items.Add(new NativeMenuItem { Header = "退出", Command = ReactiveCommand.Create(Exit) });
     }
@@ -38,13 +44,7 @@ public class TrayMenu : NativeMenu
 
     private void Exit()
     {
-        // Save window location and size.
-        var left = _mainWindow.Position.X;
-        var top = _mainWindow.Position.Y;
-        var width = (int)_mainWindow.Width;
-        var height = (int)_mainWindow.Height;
-        ConfigManagerFactory.Instance.Apply<List<int>>(GeneralConfigTypes.MainWindowLocation, [left, top, width, height]);
-        Environment.Exit(0);
+        (App.Current as App).ExitApplication();
     }
 
     private void UnlockCaption()
